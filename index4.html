@@ -16,17 +16,82 @@
             font-family: Arial, sans-serif;
         }
 
+        .game-container {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            padding: 20px;
+            max-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .price-list {
+            background: #34495e;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            color: white;
+            width: 280px;
+        }
+
+        .price-list h2 {
+            margin: 0 0 15px 0;
+            text-align: center;
+            color: #f1c40f;
+            font-size: 20px;
+        }
+
+        .price-items {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .price-category {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .category-title {
+            color: #3498db;
+            font-size: 14px;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .price-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+            padding: 2px 0;
+        }
+
+        .price-item .emoji {
+            font-size: 20px;
+            width: 30px;
+            text-align: center;
+        }
+
+        .price-item .points {
+            color: #f1c40f;
+            font-weight: bold;
+        }
+
         .slot-machine {
             background: #34495e;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            position: relative;
         }
 
         .reels {
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
+            position: relative;
         }
 
         .reel {
@@ -78,6 +143,25 @@
             cursor: not-allowed;
         }
 
+        .win-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .win-line {
+            stroke: #f1c40f;
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: drawLine 0.8s ease-out forwards;
+            opacity: 0.8;
+        }
+
         @keyframes spin {
             0% { top: 0; }
             100% { top: -900px; }
@@ -86,31 +170,147 @@
         .spinning {
             animation: spin 0.3s linear infinite;
         }
+
+        @keyframes drawLine {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        .score {
+            color: white;
+            font-size: 24px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .score-value {
+            color: #f1c40f;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
-    <div class="slot-machine">
-        <div class="reels">
-            <div class="reel">
-                <div class="reel-strip" id="reel1"></div>
-            </div>
-            <div class="reel">
-                <div class="reel-strip" id="reel2"></div>
-            </div>
-            <div class="reel">
-                <div class="reel-strip" id="reel3"></div>
+    <div class="game-container">
+        <div class="price-list">
+            <h2>Прайс-лист</h2>
+            <div class="price-items">
+                <div class="price-category">
+                    <div class="category-title">Джекпот</div>
+                    <div class="price-item">
+                        <span class="emoji">🎰</span>
+                        <span class="points">2000</span>
+                    </div>
+                </div>
+                <div class="price-category">
+                    <div class="category-title">Удача</div>
+                    <div class="price-item">
+                        <span class="emoji">🍀</span>
+                        <span class="points">1000</span>
+                    </div>
+                </div>
+                <div class="price-category">
+                    <div class="category-title">Природа</div>
+                    <div class="price-item">
+                        <span class="emoji">🌟</span>
+                        <span class="points">500</span>
+                    </div>
+                </div>
+                <div class="price-category">
+                    <div class="category-title">Развлечения</div>
+                    <div class="price-item">
+                        <span class="emoji">🎬</span>
+                        <span class="points">300</span>
+                    </div>
+                </div>
+                <div class="price-category">
+                    <div class="category-title">Музыка</div>
+                    <div class="price-item">
+                        <span class="emoji">🎼</span>
+                        <span class="points">200</span>
+                    </div>
+                </div>
+                <div class="price-category">
+                    <div class="category-title">Игры</div>
+                    <div class="price-item">
+                        <span class="emoji">🎮</span>
+                        <span class="points">100</span>
+                    </div>
+                </div>
             </div>
         </div>
-        <button class="spin-button" onclick="spin()">Крутить!</button>
+        <div class="slot-machine">
+            <div class="reels">
+                <div class="reel">
+                    <div class="reel-strip" id="reel1"></div>
+                </div>
+                <div class="reel">
+                    <div class="reel-strip" id="reel2"></div>
+                </div>
+                <div class="reel">
+                    <div class="reel-strip" id="reel3"></div>
+                </div>
+                <svg class="win-lines" id="winLines"></svg>
+            </div>
+            <button class="spin-button" onclick="spin()">Крутить!</button>
+            <div class="score">Счёт: <span class="score-value">0</span></div>
+        </div>
     </div>
 
     <script>
-        const emojis = [
-            '🎮', '🎲', '🎯', '🎪', '🎨', '🎭', '🎫', '🎰', '🎱',
-            '🎳', '🎼', '🎵', '🎸', '🎺', '🎷', '🎹', '🎻', '🎬',
-            '🌟', '💫', '⭐', '🌙', '☀️', '🌈', '🍀', '🎋', '🎍'
-        ];
+        const emojiPrices = {
+            '🎮': 100, // Игровые
+            '🎲': 100,
+            '🎯': 100,
+            '🎱': 100,
+            '🎳': 100,
+            '🎼': 200, // Музыкальные
+            '🎵': 200,
+            '🎸': 200,
+            '🎺': 200,
+            '🎷': 200,
+            '🎹': 200,
+            '🎻': 200,
+            '🎬': 300, // Развлекательные
+            '🎪': 300,
+            '🎨': 300,
+            '🎭': 300,
+            '🌟': 500, // Природные
+            '💫': 500,
+            '⭐': 500,
+            '🌙': 500,
+            '☀️': 500,
+            '🌈': 500,
+            '🍀': 1000, // Удачи
+            '🎋': 1000,
+            '🎍': 1000,
+            '🎰': 2000  // Джекпот
+        };
+
+        const emojis = Object.keys(emojiPrices);
+        let score = 0;
         let isSpinning = false;
+
+        // Создаем прайс-лист
+        function createPriceList() {
+            const priceItems = document.querySelector('.price-items');
+            const sortedEmojis = [...emojis].sort((a, b) => emojiPrices[b] - emojiPrices[a]);
+            
+            sortedEmojis.forEach(emoji => {
+                const item = document.createElement('div');
+                item.className = 'price-item';
+                item.innerHTML = `
+                    <span class="emoji">${emoji}</span>
+                    <span class="points">${emojiPrices[emoji]} очков</span>
+                `;
+                priceItems.appendChild(item);
+            });
+        }
+
+        function updateScore(points) {
+            score += points;
+            document.querySelector('.score-value').textContent = score;
+        }
 
         function getRandomEmoji() {
             return emojis[Math.floor(Math.random() * emojis.length)];
@@ -133,9 +333,102 @@
             });
         }
 
+        function clearWinLines() {
+            const svg = document.getElementById('winLines');
+            svg.innerHTML = '';
+        }
+
+        function drawWinLine(x1, y1, x2, y2) {
+            const svg = document.getElementById('winLines');
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', x1);
+            line.setAttribute('y1', y1);
+            line.setAttribute('x2', x2);
+            line.setAttribute('y2', y2);
+            line.classList.add('win-line');
+            svg.appendChild(line);
+        }
+
+        function checkWinningLines() {
+            const reels = ['reel1', 'reel2', 'reel3'].map(id => document.getElementById(id));
+            const symbols = reels.map(reel => {
+                const visibleSymbols = [];
+                const offset = Math.abs(parseInt(reel.style.top || '0')) / 60;
+                for(let i = 0; i < 3; i++) {
+                    const symbol = reel.children[i + Math.floor(offset)];
+                    if(symbol) {
+                        visibleSymbols.push(symbol.textContent);
+                    }
+                }
+                return visibleSymbols;
+            });
+
+            let winnings = 0;
+
+            // Проверяем горизонтальные линии
+            for(let row = 0; row < 3; row++) {
+                for(let col = 0; col < 2; col++) {
+                    if(symbols[col][row] === symbols[col + 1][row]) {
+                        const x1 = 40 + col * 90;
+                        const x2 = 40 + (col + 1) * 90;
+                        const y = 30 + row * 60;
+                        drawWinLine(x1, y, x2, y);
+                        winnings += emojiPrices[symbols[col][row]];
+                    }
+                }
+            }
+
+            // Проверяем диагональные линии (сверху вниз)
+            for(let row = 0; row < 2; row++) {
+                for(let col = 0; col < 2; col++) {
+                    if(symbols[col][row] === symbols[col + 1][row + 1]) {
+                        const x1 = 40 + col * 90;
+                        const y1 = 30 + row * 60;
+                        const x2 = 40 + (col + 1) * 90;
+                        const y2 = 30 + (row + 1) * 60;
+                        drawWinLine(x1, y1, x2, y2);
+                        winnings += emojiPrices[symbols[col][row]];
+                    }
+                }
+            }
+
+            // Проверяем диагональные линии (снизу вверх)
+            for(let row = 1; row < 3; row++) {
+                for(let col = 0; col < 2; col++) {
+                    if(symbols[col][row] === symbols[col + 1][row - 1]) {
+                        const x1 = 40 + col * 90;
+                        const y1 = 30 + row * 60;
+                        const x2 = 40 + (col + 1) * 90;
+                        const y2 = 30 + (row - 1) * 60;
+                        drawWinLine(x1, y1, x2, y2);
+                        winnings += emojiPrices[symbols[col][row]];
+                    }
+                }
+            }
+
+            // Проверяем вертикальные линии
+            for(let col = 0; col < 3; col++) {
+                for(let row = 0; row < 2; row++) {
+                    if(symbols[col][row] === symbols[col][row + 1]) {
+                        const x = 40 + col * 90;
+                        const y1 = 30 + row * 60;
+                        const y2 = 30 + (row + 1) * 60;
+                        drawWinLine(x, y1, x, y2);
+                        winnings += emojiPrices[symbols[col][row]];
+                    }
+                }
+            }
+
+            if(winnings > 0) {
+                updateScore(winnings);
+            }
+        }
+
         function spin() {
             if (isSpinning) return;
             isSpinning = true;
+            
+            clearWinLines();
             
             const reels = [
                 document.getElementById('reel1'),
@@ -146,37 +439,32 @@
             const button = document.querySelector('.spin-button');
             button.disabled = true;
 
-            // Запускаем быструю анимацию для каждого барабана
             reels.forEach((reel, index) => {
-                // Создаем новые символы перед началом вращения
                 const newSymbols = createReelContent();
                 reel.innerHTML = '';
                 newSymbols.forEach(symbol => reel.appendChild(symbol));
                 
                 reel.classList.add('spinning');
                 
-                // Устанавливаем разное время вращения для каждого барабана
                 setTimeout(() => {
                     reel.classList.remove('spinning');
+                    reel.style.transition = 'top 0.5s cubic-bezier(0.3, 0, 0, 1)';
                     
-                    // Плавная остановка с более длительной анимацией и мягким замедлением
-                    reel.style.transition = 'top 3s cubic-bezier(0.2, 0.5, 0.2, 1)';
-                    
-                    // Случайная конечная позиция, кратная 60px (высоте символа)
                     const stopPosition = Math.floor(Math.random() * 3) * 60;
                     reel.style.top = `-${stopPosition}px`;
                     
                     if (index === 2) {
-                        // Разблокируем кнопку только после полной остановки последнего барабана
                         setTimeout(() => {
                             isSpinning = false;
                             button.disabled = false;
-                        }, 3000);
+                            checkWinningLines();
+                        }, 500);
                     }
-                }, 2000 + index * 700); // Увеличили задержку между остановками барабанов
+                }, 2000 + index * 700);
             });
         }
 
+        // Инициализация
         initializeReels();
     </script>
 </body>
