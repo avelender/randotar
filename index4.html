@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Слот с Эмодзи</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: #2c3e50;
+            font-family: Arial, sans-serif;
+        }
+
+        .slot-machine {
+            background: #34495e;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+
+        .reels {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .reel {
+            width: 80px;
+            height: 180px;
+            background: white;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .reel-strip {
+            position: absolute;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: top 0.1s linear;
+            top: 0;
+        }
+
+        .emoji-symbol {
+            width: 80px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            flex-shrink: 0;
+        }
+
+        .spin-button {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .spin-button:hover {
+            background: #c0392b;
+        }
+
+        .spin-button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        @keyframes spin {
+            0% { top: 0; }
+            100% { top: -900px; }
+        }
+
+        .spinning {
+            animation: spin 0.3s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="slot-machine">
+        <div class="reels">
+            <div class="reel">
+                <div class="reel-strip" id="reel1"></div>
+            </div>
+            <div class="reel">
+                <div class="reel-strip" id="reel2"></div>
+            </div>
+            <div class="reel">
+                <div class="reel-strip" id="reel3"></div>
+            </div>
+        </div>
+        <button class="spin-button" onclick="spin()">Крутить!</button>
+    </div>
+
+    <script>
+        const emojis = [
+            '🎮', '🎲', '🎯', '🎪', '🎨', '🎭', '🎫', '🎰', '🎱',
+            '🎳', '🎼', '🎵', '🎸', '🎺', '🎷', '🎹', '🎻', '🎬',
+            '🌟', '💫', '⭐', '🌙', '☀️', '🌈', '🍀', '🎋', '🎍'
+        ];
+        let isSpinning = false;
+
+        function getRandomEmoji() {
+            return emojis[Math.floor(Math.random() * emojis.length)];
+        }
+
+        function createReelContent() {
+            return Array(15).fill(null).map(() => {
+                const div = document.createElement('div');
+                div.className = 'emoji-symbol';
+                div.textContent = getRandomEmoji();
+                return div;
+            });
+        }
+
+        function initializeReels() {
+            const reels = ['reel1', 'reel2', 'reel3'].map(id => document.getElementById(id));
+            reels.forEach(reel => {
+                const symbols = createReelContent();
+                symbols.forEach(symbol => reel.appendChild(symbol));
+            });
+        }
+
+        function spin() {
+            if (isSpinning) return;
+            isSpinning = true;
+            
+            const reels = [
+                document.getElementById('reel1'),
+                document.getElementById('reel2'),
+                document.getElementById('reel3')
+            ];
+            
+            const button = document.querySelector('.spin-button');
+            button.disabled = true;
+
+            // Запускаем быструю анимацию для каждого барабана
+            reels.forEach((reel, index) => {
+                // Создаем новые символы перед началом вращения
+                const newSymbols = createReelContent();
+                reel.innerHTML = '';
+                newSymbols.forEach(symbol => reel.appendChild(symbol));
+                
+                reel.classList.add('spinning');
+                
+                // Устанавливаем разное время вращения для каждого барабана
+                setTimeout(() => {
+                    reel.classList.remove('spinning');
+                    
+                    // Плавная остановка с более длительной анимацией и мягким замедлением
+                    reel.style.transition = 'top 3s cubic-bezier(0.2, 0.5, 0.2, 1)';
+                    
+                    // Случайная конечная позиция, кратная 60px (высоте символа)
+                    const stopPosition = Math.floor(Math.random() * 3) * 60;
+                    reel.style.top = `-${stopPosition}px`;
+                    
+                    if (index === 2) {
+                        // Разблокируем кнопку только после полной остановки последнего барабана
+                        setTimeout(() => {
+                            isSpinning = false;
+                            button.disabled = false;
+                        }, 3000);
+                    }
+                }, 2000 + index * 700); // Увеличили задержку между остановками барабанов
+            });
+        }
+
+        initializeReels();
+    </script>
+</body>
+</html>
