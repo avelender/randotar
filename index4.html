@@ -188,6 +188,54 @@
             color: #f1c40f;
             font-weight: bold;
         }
+
+        .scores-table {
+            background: #34495e;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            color: white;
+            width: 280px;
+        }
+
+        .scores-table h2 {
+            margin: 0 0 15px 0;
+            text-align: center;
+            color: #f1c40f;
+            font-size: 20px;
+        }
+
+        .scores-category {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .scores-category:last-child {
+            margin-bottom: 0;
+        }
+
+        .category-header {
+            color: #3498db;
+            font-size: 16px;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .total-score {
+            font-size: 24px;
+            text-align: center;
+            color: #f1c40f;
+            font-weight: bold;
+        }
+
+        .ip-info {
+            font-size: 12px;
+            text-align: center;
+            color: #95a5a6;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -255,6 +303,19 @@
             <button class="spin-button" onclick="spin()">Крутить!</button>
             <div class="score">Счёт: <span class="score-value">0</span></div>
         </div>
+        <div class="scores-table">
+            <h2>Таблица очков</h2>
+            <div class="scores-category">
+                <div class="category-header">Чётные IP</div>
+                <div class="total-score" id="evenScore">0</div>
+                <div class="ip-info" id="evenIPs">Нет игроков</div>
+            </div>
+            <div class="scores-category">
+                <div class="category-header">Нечётные IP</div>
+                <div class="total-score" id="oddScore">0</div>
+                <div class="ip-info" id="oddIPs">Нет игроков</div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -290,6 +351,12 @@
         const emojis = Object.keys(emojiPrices);
         let score = 0;
         let isSpinning = false;
+
+        let evenTotalScore = 0;
+        let oddTotalScore = 0;
+        let currentIP = '';
+        let evenIPs = new Set();
+        let oddIPs = new Set();
 
         // Создаем прайс-лист
         function createPriceList() {
@@ -421,13 +488,87 @@
 
             if(winnings > 0) {
                 updateScore(winnings);
+                updateTotalScore(winnings);
             }
         }
 
-        function spin() {
-            if (isSpinning) return;
-            isSpinning = true;
+        // Получаем IP пользователя
+        async function getIP() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                return data.ip;
+            } catch (error) {
+                console.error('Ошибка при получении IP:', error);
+                return null;
+            }
+        }
+
+        // Загружаем сохранённые данные
+        function loadSavedScores() {
+            const savedData = localStorage.getItem('slotMachineScores');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                evenTotalScore = data.evenTotalScore || 0;
+                oddTotalScore = data.oddTotalScore || 0;
+                evenIPs = new Set(data.evenIPs || []);
+                oddIPs = new Set(data.oddIPs || []);
+                
+                // Обновляем отображение
+                document.getElementById('evenScore').textContent = evenTotalScore;
+                document.getElementById('oddScore').textContent = oddTotalScore;
+                document.getElementById('evenIPs').textContent = 
+                    evenIPs.size > 0 ? `IP: ${Array.from(evenIPs).join(', ')}` : 'Нет игроков';
+                document.getElementById('oddIPs').textContent = 
+                    oddIPs.size > 0 ? `IP: ${Array.from(oddIPs).join(', ')}` : 'Нет игроков';
+            }
+        }
+
+        // Сохраняем данные
+        function saveScores() {
+            const data = {
+                evenTotalScore,
+                oddTotalScore,
+                evenIPs: Array.from(evenIPs),
+                oddIPs: Array.from(oddIPs)
+            };
+            localStorage.setItem('slotMachineScores', JSON.stringify(data));
+        }
+
+        // Обновляем общий счёт
+        function updateTotalScore(points) {
+            if (!currentIP) return;
             
+            const lastDigit = parseInt(currentIP.split('.').pop());
+            const lastOctet = currentIP.split('.').pop();
+
+            if (lastDigit % 2 === 0) {
+                evenTotalScore += points;
+                evenIPs.add(lastOctet);
+                document.getElementById('evenScore').textContent = evenTotalScore;
+                document.getElementById('evenIPs').textContent = 
+                    `IP: ${Array.from(evenIPs).join(', ')}`;
+            } else {
+                oddTotalScore += points;
+                oddIPs.add(lastOctet);
+                document.getElementById('oddScore').textContent = oddTotalScore;
+                document.getElementById('oddIPs').textContent = 
+                    `IP: ${Array.from(oddIPs).join(', ')}`;
+            }
+            
+            // Сохраняем после каждого обновления
+            saveScores();
+        }
+
+        async function spin() {
+            if (isSpinning) return;
+            
+            // Получаем IP перед каждым спином
+            if (!currentIP) {
+                currentIP = await getIP();
+            }
+            
+            isSpinning = true;
             clearWinLines();
             
             const reels = [
@@ -466,6 +607,7 @@
 
         // Инициализация
         initializeReels();
+        loadSavedScores();
     </script>
 </body>
 </html>
