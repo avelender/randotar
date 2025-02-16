@@ -358,9 +358,6 @@
         let evenIPs = new Set();
         let oddIPs = new Set();
 
-        const BIN_ID = '65cf5c0edc74654018891edb'; // ID для хранения данных
-        const API_KEY = '$2a$10$TjwUJwNKfhzN4.Ld0/JZVOFPBnfXNDQbCJZJGzKRJLSNXvBgvxOyO'; // Ключ доступа
-
         // Создаем прайс-лист
         function createPriceList() {
             const priceItems = document.querySelector('.price-items');
@@ -510,13 +507,8 @@
         // Загружаем сохранённые данные
         async function loadSavedScores() {
             try {
-                const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-                    headers: {
-                        'X-Master-Key': API_KEY
-                    }
-                });
-                const result = await response.json();
-                const data = result.record;
+                const response = await fetch('scores.json');
+                const data = await response.json();
                 
                 evenTotalScore = data.evenTotalScore || 0;
                 oddTotalScore = data.oddTotalScore || 0;
@@ -535,8 +527,8 @@
             }
         }
 
-        // Сохраняем данные
-        async function saveScores() {
+        // Сохраняем данные в localStorage для текущего браузера
+        function saveScores() {
             try {
                 const data = {
                     evenTotalScore,
@@ -544,15 +536,7 @@
                     evenIPs: Array.from(evenIPs),
                     oddIPs: Array.from(oddIPs)
                 };
-                
-                await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Master-Key': API_KEY
-                    },
-                    body: JSON.stringify(data)
-                });
+                localStorage.setItem('slotMachineScores', JSON.stringify(data));
             } catch (error) {
                 console.error('Ошибка при сохранении данных:', error);
             }
