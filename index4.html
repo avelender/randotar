@@ -238,9 +238,56 @@
             color: #95a5a6;
             margin-top: 5px;
         }
+
+        .server-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            background: #f5f5f5;
+            font-size: 14px;
+            z-index: 1000;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .status-ok {
+            background: #4CAF50;
+        }
+
+        .status-error {
+            background: #f44336;
+        }
+
+        .status-details {
+            display: none;
+            margin-top: 5px;
+            padding: 5px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+
+        .server-status:hover .status-details {
+            display: block;
+        }
     </style>
 </head>
 <body>
+    <div class="server-status">
+        <div>
+            <span class="status-indicator"></span>
+            <span class="status-text">Проверка сервера...</span>
+        </div>
+        <div class="status-details"></div>
+    </div>
     <div class="game-container">
         <div class="price-list">
             <h2>Прайс-лист</h2>
@@ -692,6 +739,51 @@
                 }, 2000 + index * 700);
             });
         }
+
+        // Функция проверки статуса сервера
+        async function checkServerStatus() {
+            const statusIndicator = document.querySelector('.status-indicator');
+            const statusText = document.querySelector('.status-text');
+            const statusDetails = document.querySelector('.status-details');
+            
+            try {
+                const response = await fetch('status.php');
+                const status = await response.json();
+                
+                if (status.php_running && status.file_permissions && status.json_support) {
+                    statusIndicator.className = 'status-indicator status-ok';
+                    statusText.textContent = 'Сервер работает';
+                    statusDetails.innerHTML = `
+                        <div>PHP версия: ${status.version}</div>
+                        <div>JSON поддержка: ${status.json_support ? 'Да' : 'Нет'}</div>
+                        <div>Права на запись: ${status.file_permissions ? 'Да' : 'Нет'}</div>
+                    `;
+                } else {
+                    statusIndicator.className = 'status-indicator status-error';
+                    statusText.textContent = 'Проблемы с сервером';
+                    let issues = [];
+                    if (!status.file_permissions) issues.push('Нет прав на запись файлов');
+                    if (!status.json_support) issues.push('Нет поддержки JSON');
+                    statusDetails.innerHTML = `
+                        <div>Найдены проблемы:</div>
+                        <div>${issues.join('<br>')}</div>
+                    `;
+                }
+            } catch (error) {
+                statusIndicator.className = 'status-indicator status-error';
+                statusText.textContent = 'Сервер PHP не доступен';
+                statusDetails.innerHTML = `
+                    <div>Ошибка: ${error.message}</div>
+                    <div>Используется локальное хранилище</div>
+                `;
+            }
+        }
+        
+        // Проверяем статус каждые 30 секунд
+        setInterval(checkServerStatus, 30000);
+        
+        // Первая проверка при загрузке
+        checkServerStatus();
 
         // Инициализация
         initializeReels();
