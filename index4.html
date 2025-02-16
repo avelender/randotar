@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Слот с Эмодзи</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
         body {
             display: flex;
@@ -247,6 +248,9 @@
 </head>
 <body>
     <div class="game-container">
+        <div class="score-info">
+            <p><small>* Счёт синхронизируется между всеми браузерами</small></p>
+        </div>
         <div class="price-list">
             <h2>Прайс-лист</h2>
             <div class="price-items">
@@ -323,12 +327,14 @@
                 <div class="ip-info" id="oddIPs">Нет игроков</div>
             </div>
         </div>
-        <div class="score-info">
-            <p><small>* Счёт сохраняется только для текущего браузера</small></p>
-        </div>
     </div>
 
     <script>
+        // Инициализация Supabase
+        const SUPABASE_URL = 'https://fzpfhuetylazrkkpopcl.supabase.co'; // Замените на вашу ссылку из Supabase
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6cGZodWV0eWxhenJra3BvcGNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk3MDI5MTUsImV4cCI6MjA1NTI3ODkxNX0.BhaSWyq5IKhxjTwP14Fw9D-TDe9OYHosXR1mzHA2jqI'; // Замените на ваш публичный ключ из Supabase
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         // Инициализация
         const emojiPrices = {
             '🎮': 100, // Игровые
@@ -369,38 +375,66 @@
         let evenIPs = new Set();
         let oddIPs = new Set();
 
-        // Загружаем сохранённые данные из localStorage
-        function loadSavedScores() {
+        // Загружаем сохранённые данные из Supabase
+        async function loadSavedScores() {
             try {
-                const savedData = localStorage.getItem('slotMachineScores');
-                if (savedData) {
-                    const data = JSON.parse(savedData);
-                    evenTotalScore = data.evenTotalScore || 0;
-                    oddTotalScore = data.oddTotalScore || 0;
-                    evenIPs = new Set(data.evenIPs || []);
-                    oddIPs = new Set(data.oddIPs || []);
-                    
-                    // Обновляем отображение
-                    updateScoreDisplay();
+                const { data, error } = await supabase
+                    .from('scores')
+                    .select('*')
+                    .single();
+                
+                if (error) throw error;
+                
+                if (data) {
+                    evenTotalScore = data.even_total_score || 0;
+                    oddTotalScore = data.odd_total_score || 0;
+                    evenIPs = new Set(data.even_ips || []);
+                    oddIPs = new Set(data.odd_ips || []);
                 }
+                
+                // Обновляем отображение
+                updateScoreDisplay();
             } catch (error) {
                 console.error('Ошибка при загрузке данных:', error);
             }
         }
 
-        // Сохраняем данные в localStorage
-        function saveScores() {
+        // Сохраняем данные в Supabase
+        async function saveScores() {
             try {
-                const data = {
-                    evenTotalScore,
-                    oddTotalScore,
-                    evenIPs: Array.from(evenIPs),
-                    oddIPs: Array.from(oddIPs)
-                };
-                localStorage.setItem('slotMachineScores', JSON.stringify(data));
+                const { error } = await supabase
+                    .from('scores')
+                    .upsert({
+                        id: 1, // Используем один общий счет
+                        even_total_score: evenTotalScore,
+                        odd_total_score: oddTotalScore,
+                        even_ips: Array.from(evenIPs),
+                        odd_ips: Array.from(oddIPs),
+                        updated_at: new Date().toISOString()
+                    });
+                
+                if (error) throw error;
             } catch (error) {
                 console.error('Ошибка при сохранении данных:', error);
             }
+        }
+
+        // Подписываемся на изменения в реальном времени
+        function subscribeToScores() {
+            supabase
+                .channel('scores')
+                .on('postgres_changes', 
+                    { event: '*', schema: 'public', table: 'scores' }, 
+                    payload => {
+                        const newData = payload.new;
+                        evenTotalScore = newData.even_total_score;
+                        oddTotalScore = newData.odd_total_score;
+                        evenIPs = new Set(newData.even_ips);
+                        oddIPs = new Set(newData.odd_ips);
+                        updateScoreDisplay();
+                    }
+                )
+                .subscribe();
         }
 
         // Обновляем отображение счёта
@@ -627,6 +661,7 @@
         // Инициализация
         initializeReels();
         loadSavedScores();
+        subscribeToScores(); // Подписываемся на обновления
     </script>
 </body>
 </html>
