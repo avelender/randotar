@@ -358,6 +358,9 @@
         let evenIPs = new Set();
         let oddIPs = new Set();
 
+        const BIN_ID = '65cf5c0edc74654018891edb'; // ID для хранения данных
+        const API_KEY = '$2a$10$TjwUJwNKfhzN4.Ld0/JZVOFPBnfXNDQbCJZJGzKRJLSNXvBgvxOyO'; // Ключ доступа
+
         // Создаем прайс-лист
         function createPriceList() {
             const priceItems = document.querySelector('.price-items');
@@ -505,10 +508,16 @@
         }
 
         // Загружаем сохранённые данные
-        function loadSavedScores() {
-            const savedData = localStorage.getItem('slotMachineScores');
-            if (savedData) {
-                const data = JSON.parse(savedData);
+        async function loadSavedScores() {
+            try {
+                const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                    headers: {
+                        'X-Master-Key': API_KEY
+                    }
+                });
+                const result = await response.json();
+                const data = result.record;
+                
                 evenTotalScore = data.evenTotalScore || 0;
                 oddTotalScore = data.oddTotalScore || 0;
                 evenIPs = new Set(data.evenIPs || []);
@@ -521,18 +530,32 @@
                     evenIPs.size > 0 ? `IP: ${Array.from(evenIPs).join(', ')}` : 'Нет игроков';
                 document.getElementById('oddIPs').textContent = 
                     oddIPs.size > 0 ? `IP: ${Array.from(oddIPs).join(', ')}` : 'Нет игроков';
+            } catch (error) {
+                console.error('Ошибка при загрузке данных:', error);
             }
         }
 
         // Сохраняем данные
-        function saveScores() {
-            const data = {
-                evenTotalScore,
-                oddTotalScore,
-                evenIPs: Array.from(evenIPs),
-                oddIPs: Array.from(oddIPs)
-            };
-            localStorage.setItem('slotMachineScores', JSON.stringify(data));
+        async function saveScores() {
+            try {
+                const data = {
+                    evenTotalScore,
+                    oddTotalScore,
+                    evenIPs: Array.from(evenIPs),
+                    oddIPs: Array.from(oddIPs)
+                };
+                
+                await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': API_KEY
+                    },
+                    body: JSON.stringify(data)
+                });
+            } catch (error) {
+                console.error('Ошибка при сохранении данных:', error);
+            }
         }
 
         // Обновляем общий счёт
@@ -556,8 +579,12 @@
                     `IP: ${Array.from(oddIPs).join(', ')}`;
             }
             
-            // Сохраняем после каждого обновления
             saveScores();
+        }
+
+        // Периодически обновляем данные
+        function startScoreUpdates() {
+            setInterval(loadSavedScores, 5000); // Обновляем каждые 5 секунд
         }
 
         async function spin() {
@@ -608,6 +635,7 @@
         // Инициализация
         initializeReels();
         loadSavedScores();
+        startScoreUpdates();
     </script>
 </body>
 </html>
