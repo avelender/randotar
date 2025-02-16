@@ -1,0 +1,10 @@
+{
+    "name": "randotar",
+    "version": "1.0.0",
+    "description": "Emoji Slot Machine",
+    "scripts": {
+        "start": "vercel dev"
+    },
+    "dependencies": {
+    }
+}

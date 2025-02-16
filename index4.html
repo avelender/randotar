@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Слот с Эмодзи</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         body {
             display: flex;
@@ -239,55 +237,15 @@
             margin-top: 5px;
         }
 
-        .server-status {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            padding: 10px;
-            border-radius: 5px;
-            background: #f5f5f5;
-            font-size: 14px;
-            z-index: 1000;
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 5px;
-        }
-
-        .status-ok {
-            background: #4CAF50;
-        }
-
-        .status-error {
-            background: #f44336;
-        }
-
-        .status-details {
-            display: none;
+        .score-info {
+            font-size: 12px;
+            text-align: center;
+            color: #95a5a6;
             margin-top: 5px;
-            padding: 5px;
-            background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-        }
-
-        .server-status:hover .status-details {
-            display: block;
         }
     </style>
 </head>
 <body>
-    <div class="server-status">
-        <div>
-            <span class="status-indicator"></span>
-            <span class="status-text">Проверка сервера...</span>
-        </div>
-        <div class="status-details"></div>
-    </div>
     <div class="game-container">
         <div class="price-list">
             <h2>Прайс-лист</h2>
@@ -365,22 +323,13 @@
                 <div class="ip-info" id="oddIPs">Нет игроков</div>
             </div>
         </div>
+        <div class="score-info">
+            <p><small>* Счёт сохраняется только для текущего браузера</small></p>
+        </div>
     </div>
 
     <script>
-        // Инициализация Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyDxkUVTHJEkF4RCpxgLUl7jvQGsXs5Qwpk",
-            authDomain: "emoji-slot-machine.firebaseapp.com",
-            databaseURL: "https://emoji-slot-machine-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "emoji-slot-machine",
-            storageBucket: "emoji-slot-machine.appspot.com",
-            messagingSenderId: "123456789012",
-            appId: "1:123456789012:web:abcdef0123456789abcdef"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-
+        // Инициализация
         const emojiPrices = {
             '🎮': 100, // Игровые
             '🎲': 100,
@@ -419,6 +368,70 @@
         let currentIP = '';
         let evenIPs = new Set();
         let oddIPs = new Set();
+
+        // Загружаем сохранённые данные из localStorage
+        function loadSavedScores() {
+            try {
+                const savedData = localStorage.getItem('slotMachineScores');
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    evenTotalScore = data.evenTotalScore || 0;
+                    oddTotalScore = data.oddTotalScore || 0;
+                    evenIPs = new Set(data.evenIPs || []);
+                    oddIPs = new Set(data.oddIPs || []);
+                    
+                    // Обновляем отображение
+                    updateScoreDisplay();
+                }
+            } catch (error) {
+                console.error('Ошибка при загрузке данных:', error);
+            }
+        }
+
+        // Сохраняем данные в localStorage
+        function saveScores() {
+            try {
+                const data = {
+                    evenTotalScore,
+                    oddTotalScore,
+                    evenIPs: Array.from(evenIPs),
+                    oddIPs: Array.from(oddIPs)
+                };
+                localStorage.setItem('slotMachineScores', JSON.stringify(data));
+            } catch (error) {
+                console.error('Ошибка при сохранении данных:', error);
+            }
+        }
+
+        // Обновляем отображение счёта
+        function updateScoreDisplay() {
+            document.getElementById('evenScore').textContent = evenTotalScore;
+            document.getElementById('oddScore').textContent = oddTotalScore;
+            document.getElementById('evenIPs').textContent = 
+                evenIPs.size > 0 ? `IP: ${Array.from(evenIPs).join(', ')}` : 'Нет игроков';
+            document.getElementById('oddIPs').textContent = 
+                oddIPs.size > 0 ? `IP: ${Array.from(oddIPs).join(', ')}` : 'Нет игроков';
+        }
+
+        // Обновляем общий счёт
+        function updateTotalScore(points) {
+            if (!currentIP) return;
+            
+            const lastDigit = parseInt(currentIP.split('.').pop());
+            const lastOctet = currentIP.split('.').pop();
+
+            if (lastDigit % 2 === 0) {
+                evenTotalScore += points;
+                evenIPs.add(lastOctet);
+            } else {
+                oddTotalScore += points;
+                oddIPs.add(lastOctet);
+            }
+            
+            // Обновляем отображение и сохраняем
+            updateScoreDisplay();
+            saveScores();
+        }
 
         // Создаем прайс-лист
         function createPriceList() {
@@ -566,135 +579,6 @@
             }
         }
 
-        // Загружаем сохранённые данные
-        async function loadSavedScores() {
-            try {
-                const response = await fetch('scores.php');
-                const data = await response.json();
-                console.log('Загруженные данные:', data);
-                
-                evenTotalScore = data.evenTotalScore || 0;
-                oddTotalScore = data.oddTotalScore || 0;
-                evenIPs = new Set(data.evenIPs || []);
-                oddIPs = new Set(data.oddIPs || []);
-                
-                // Обновляем отображение
-                document.getElementById('evenScore').textContent = evenTotalScore;
-                document.getElementById('oddScore').textContent = oddTotalScore;
-                document.getElementById('evenIPs').textContent = 
-                    evenIPs.size > 0 ? `IP: ${Array.from(evenIPs).join(', ')}` : 'Нет игроков';
-                document.getElementById('oddIPs').textContent = 
-                    oddIPs.size > 0 ? `IP: ${Array.from(oddIPs).join(', ')}` : 'Нет игроков';
-                
-                // Сохраняем в localStorage для резервной копии
-                saveLocalScores();
-            } catch (error) {
-                console.error('Ошибка при загрузке данных с сервера:', error);
-                // При ошибке загружаем из localStorage
-                loadLocalScores();
-            }
-        }
-
-        // Сохраняем данные
-        async function saveScores() {
-            try {
-                const data = {
-                    evenTotalScore,
-                    oddTotalScore,
-                    evenIPs: Array.from(evenIPs),
-                    oddIPs: Array.from(oddIPs)
-                };
-                console.log('Сохраняем данные:', data);
-                
-                const response = await fetch('scores.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Ошибка сохранения на сервере');
-                }
-                
-                // Сохраняем в localStorage как резервную копию
-                saveLocalScores();
-            } catch (error) {
-                console.error('Ошибка при сохранении данных на сервере:', error);
-                // При ошибке сохраняем только в localStorage
-                saveLocalScores();
-            }
-        }
-
-        // Загружаем данные из localStorage (используется как резервная копия)
-        function loadLocalScores() {
-            try {
-                const savedData = localStorage.getItem('slotMachineScores');
-                if (savedData) {
-                    const data = JSON.parse(savedData);
-                    evenTotalScore = data.evenTotalScore || 0;
-                    oddTotalScore = data.oddTotalScore || 0;
-                    evenIPs = new Set(data.evenIPs || []);
-                    oddIPs = new Set(data.oddIPs || []);
-                    
-                    // Обновляем отображение
-                    document.getElementById('evenScore').textContent = evenTotalScore;
-                    document.getElementById('oddScore').textContent = oddTotalScore;
-                    document.getElementById('evenIPs').textContent = 
-                        evenIPs.size > 0 ? `IP: ${Array.from(evenIPs).join(', ')}` : 'Нет игроков';
-                    document.getElementById('oddIPs').textContent = 
-                        oddIPs.size > 0 ? `IP: ${Array.from(oddIPs).join(', ')}` : 'Нет игроков';
-                }
-            } catch (error) {
-                console.error('Ошибка при загрузке из localStorage:', error);
-            }
-        }
-
-        // Сохраняем в localStorage как резервную копию
-        function saveLocalScores() {
-            try {
-                const data = {
-                    evenTotalScore,
-                    oddTotalScore,
-                    evenIPs: Array.from(evenIPs),
-                    oddIPs: Array.from(oddIPs)
-                };
-                localStorage.setItem('slotMachineScores', JSON.stringify(data));
-            } catch (error) {
-                console.error('Ошибка при сохранении в localStorage:', error);
-            }
-        }
-
-        // Обновляем общий счёт
-        async function updateTotalScore(points) {
-            if (!currentIP) return;
-            
-            const lastDigit = parseInt(currentIP.split('.').pop());
-            const lastOctet = currentIP.split('.').pop();
-
-            if (lastDigit % 2 === 0) {
-                evenTotalScore += points;
-                evenIPs.add(lastOctet);
-                document.getElementById('evenScore').textContent = evenTotalScore;
-                document.getElementById('evenIPs').textContent = 
-                    `IP: ${Array.from(evenIPs).join(', ')}`;
-            } else {
-                oddTotalScore += points;
-                oddIPs.add(lastOctet);
-                document.getElementById('oddScore').textContent = oddTotalScore;
-                document.getElementById('oddIPs').textContent = 
-                    `IP: ${Array.from(oddIPs).join(', ')}`;
-            }
-            
-            await saveScores();
-        }
-
-        // Периодически обновляем данные
-        function startScoreUpdates() {
-            setInterval(loadSavedScores, 5000); // Обновляем каждые 5 секунд
-        }
-
         async function spin() {
             if (isSpinning) return;
             
@@ -740,55 +624,9 @@
             });
         }
 
-        // Функция проверки статуса сервера
-        async function checkServerStatus() {
-            const statusIndicator = document.querySelector('.status-indicator');
-            const statusText = document.querySelector('.status-text');
-            const statusDetails = document.querySelector('.status-details');
-            
-            try {
-                const response = await fetch('status.php');
-                const status = await response.json();
-                
-                if (status.php_running && status.file_permissions && status.json_support) {
-                    statusIndicator.className = 'status-indicator status-ok';
-                    statusText.textContent = 'Сервер работает';
-                    statusDetails.innerHTML = `
-                        <div>PHP версия: ${status.version}</div>
-                        <div>JSON поддержка: ${status.json_support ? 'Да' : 'Нет'}</div>
-                        <div>Права на запись: ${status.file_permissions ? 'Да' : 'Нет'}</div>
-                    `;
-                } else {
-                    statusIndicator.className = 'status-indicator status-error';
-                    statusText.textContent = 'Проблемы с сервером';
-                    let issues = [];
-                    if (!status.file_permissions) issues.push('Нет прав на запись файлов');
-                    if (!status.json_support) issues.push('Нет поддержки JSON');
-                    statusDetails.innerHTML = `
-                        <div>Найдены проблемы:</div>
-                        <div>${issues.join('<br>')}</div>
-                    `;
-                }
-            } catch (error) {
-                statusIndicator.className = 'status-indicator status-error';
-                statusText.textContent = 'Сервер PHP не доступен';
-                statusDetails.innerHTML = `
-                    <div>Ошибка: ${error.message}</div>
-                    <div>Используется локальное хранилище</div>
-                `;
-            }
-        }
-        
-        // Проверяем статус каждые 30 секунд
-        setInterval(checkServerStatus, 30000);
-        
-        // Первая проверка при загрузке
-        checkServerStatus();
-
         // Инициализация
         initializeReels();
         loadSavedScores();
-        startScoreUpdates();
     </script>
 </body>
 </html>
