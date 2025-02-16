@@ -32,35 +32,39 @@
             border-radius: 10px;
             margin-bottom: 20px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            max-height: 300px;
-            overflow-y: auto;
             width: 280px;
         }
 
         .price-category {
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             border-bottom: 1px solid #eee;
-            padding-bottom: 5px;
+            padding-bottom: 8px;
+        }
+
+        .price-category:last-child {
+            margin-bottom: 0;
+            border-bottom: none;
+            padding-bottom: 0;
         }
 
         .price-category-title {
             font-size: 14px;
             color: #666;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             font-weight: bold;
         }
 
         .price-items {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 5px;
+            gap: 8px;
             font-size: 13px;
         }
 
         .price-item {
             display: flex;
             align-items: center;
-            padding: 3px;
+            padding: 4px;
             border-radius: 5px;
             background: #f8f9fa;
         }
@@ -72,25 +76,6 @@
         .price-item .points {
             color: #28a745;
             font-size: 12px;
-        }
-
-        /* Скроллбар для прайс-листа */
-        .price-list::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .price-list::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 3px;
-        }
-
-        .price-list::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 3px;
-        }
-
-        .price-list::-webkit-scrollbar-thumb:hover {
-            background: #555;
         }
 
         .slot-machine {

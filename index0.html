@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мигающие разноцветные квадраты</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        #container {
+            display: flex;
+            flex-wrap: wrap;
+            height: 100%;
+        }
+        .square {
+            transition: opacity 0.1s;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+
+    <script>
+        const container = document.getElementById('container');
+        const squareSize = 50; // Размер каждого квадрата в пикселях
+
+        function createSquares() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const columns = Math.ceil(width / squareSize);
+            const rows = Math.ceil(height / squareSize);
+
+            for (let i = 0; i < rows * columns; i++) {
+                const square = document.createElement('div');
+                square.className = 'square';
+                square.style.width = `${squareSize}px`;
+                square.style.height = `${squareSize}px`;
+                container.appendChild(square);
+                initializeSquare(square);
+            }
+        }
+
+        function initializeSquare(square) {
+            let minOpacity, maxOpacity;
+            let blinkInterval;
+
+            function getRandomColor() {
+                return `rgb(${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)}, ${Math.floor(Math.random() * 256)})`;
+            }
+
+            function blink() {
+                square.style.opacity = (square.style.opacity === maxOpacity.toString()) ? minOpacity.toString() : maxOpacity.toString();
+            }
+
+            function changeBrightness() {
+                minOpacity = Math.random() * 0.5;
+                maxOpacity = Math.random() * (1 - minOpacity) + minOpacity;
+                square.style.opacity = maxOpacity.toString();
+                square.style.backgroundColor = getRandomColor(); // Добавлено изменение цвета
+            }
+
+            function randomBlink() {
+                clearInterval(blinkInterval);
+                const blinkCount = Math.floor(Math.random() * 10) + 1;
+                const interval = 1000 / blinkCount;
+                blinkInterval = setInterval(blink, interval);
+            }
+
+            function scheduleNextBrightnessChange() {
+                const nextChangeTime = Math.random() * 1000;
+                setTimeout(() => {
+                    changeBrightness();
+                    scheduleNextBrightnessChange();
+                }, nextChangeTime);
+            }
+
+            randomBlink();
+            setInterval(randomBlink, 1000);
+            changeBrightness();
+            scheduleNextBrightnessChange();
+        }
+
+        createSquares();
+        window.addEventListener('resize', () => {
+            container.innerHTML = '';
+            createSquares();
+        });
+    </script>
+</body>
+</html>
