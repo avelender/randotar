@@ -27,57 +27,70 @@
         }
 
         .price-list {
-            background: #34495e;
+            background: rgba(255, 255, 255, 0.9);
             padding: 15px;
             border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
-            color: white;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            max-height: 300px;
+            overflow-y: auto;
             width: 280px;
         }
 
-        .price-list h2 {
-            margin: 0 0 15px 0;
-            text-align: center;
-            color: #f1c40f;
-            font-size: 20px;
+        .price-category {
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+
+        .price-category-title {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: bold;
         }
 
         .price-items {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
-
-        .price-category {
-            background: rgba(0, 0, 0, 0.2);
-            padding: 10px;
-            border-radius: 8px;
-        }
-
-        .category-title {
-            color: #3498db;
-            font-size: 14px;
-            margin-bottom: 8px;
-            text-align: center;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            font-size: 13px;
         }
 
         .price-item {
             display: flex;
             align-items: center;
-            gap: 5px;
-            font-size: 14px;
-            padding: 2px 0;
+            padding: 3px;
+            border-radius: 5px;
+            background: #f8f9fa;
         }
 
-        .price-item .emoji {
-            font-size: 20px;
-            width: 30px;
-            text-align: center;
+        .price-item span {
+            margin-right: 5px;
         }
 
         .price-item .points {
-            color: #f1c40f;
-            font-weight: bold;
+            color: #28a745;
+            font-size: 12px;
+        }
+
+        /* Скроллбар для прайс-листа */
+        .price-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .price-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .price-list::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+
+        .price-list::-webkit-scrollbar-thumb:hover {
+            background: #555;
         }
 
         .slot-machine {
@@ -249,49 +262,55 @@
 <body>
     <div class="game-container">
         <div class="price-list">
-            <h2>Прайс-лист</h2>
-            <div class="price-items">
-                <div class="price-category">
-                    <div class="category-title">Джекпот</div>
-                    <div class="price-item">
-                        <span class="emoji">🎰</span>
-                        <span class="points">2000</span>
-                    </div>
+            <div class="price-category">
+                <div class="price-category-title">🎮 Игровые (100)</div>
+                <div class="price-items">
+                    <div class="price-item"><span>🎮</span><span class="points">100</span></div>
+                    <div class="price-item"><span>🎲</span><span class="points">100</span></div>
+                    <div class="price-item"><span>🎯</span><span class="points">100</span></div>
+                    <div class="price-item"><span>🎱</span><span class="points">100</span></div>
+                    <div class="price-item"><span>🎳</span><span class="points">100</span></div>
                 </div>
-                <div class="price-category">
-                    <div class="category-title">Удача</div>
-                    <div class="price-item">
-                        <span class="emoji">🍀</span>
-                        <span class="points">1000</span>
-                    </div>
+            </div>
+            <div class="price-category">
+                <div class="price-category-title">🎵 Музыкальные (200)</div>
+                <div class="price-items">
+                    <div class="price-item"><span>🎼</span><span class="points">200</span></div>
+                    <div class="price-item"><span>🎵</span><span class="points">200</span></div>
+                    <div class="price-item"><span>🎸</span><span class="points">200</span></div>
+                    <div class="price-item"><span>🎺</span><span class="points">200</span></div>
+                    <div class="price-item"><span>🎷</span><span class="points">200</span></div>
+                    <div class="price-item"><span>🎹</span><span class="points">200</span></div>
+                    <div class="price-item"><span>🎻</span><span class="points">200</span></div>
                 </div>
-                <div class="price-category">
-                    <div class="category-title">Природа</div>
-                    <div class="price-item">
-                        <span class="emoji">🌟</span>
-                        <span class="points">500</span>
-                    </div>
+            </div>
+            <div class="price-category">
+                <div class="price-category-title">🎭 Развлечения (300)</div>
+                <div class="price-items">
+                    <div class="price-item"><span>🎬</span><span class="points">300</span></div>
+                    <div class="price-item"><span>🎪</span><span class="points">300</span></div>
+                    <div class="price-item"><span>🎨</span><span class="points">300</span></div>
+                    <div class="price-item"><span>🎭</span><span class="points">300</span></div>
                 </div>
-                <div class="price-category">
-                    <div class="category-title">Развлечения</div>
-                    <div class="price-item">
-                        <span class="emoji">🎬</span>
-                        <span class="points">300</span>
-                    </div>
+            </div>
+            <div class="price-category">
+                <div class="price-category-title">⭐ Природные (500)</div>
+                <div class="price-items">
+                    <div class="price-item"><span>🌟</span><span class="points">500</span></div>
+                    <div class="price-item"><span>💫</span><span class="points">500</span></div>
+                    <div class="price-item"><span>⭐</span><span class="points">500</span></div>
+                    <div class="price-item"><span>🌙</span><span class="points">500</span></div>
+                    <div class="price-item"><span>☀️</span><span class="points">500</span></div>
+                    <div class="price-item"><span>🌈</span><span class="points">500</span></div>
                 </div>
-                <div class="price-category">
-                    <div class="category-title">Музыка</div>
-                    <div class="price-item">
-                        <span class="emoji">🎼</span>
-                        <span class="points">200</span>
-                    </div>
-                </div>
-                <div class="price-category">
-                    <div class="category-title">Игры</div>
-                    <div class="price-item">
-                        <span class="emoji">🎮</span>
-                        <span class="points">100</span>
-                    </div>
+            </div>
+            <div class="price-category">
+                <div class="price-category-title">🍀 Удача (1000-2000)</div>
+                <div class="price-items">
+                    <div class="price-item"><span>🍀</span><span class="points">1000</span></div>
+                    <div class="price-item"><span>🎋</span><span class="points">1000</span></div>
+                    <div class="price-item"><span>🎍</span><span class="points">1000</span></div>
+                    <div class="price-item"><span>🎰</span><span class="points">2000</span></div>
                 </div>
             </div>
         </div>
