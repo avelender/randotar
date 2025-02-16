@@ -4,21 +4,37 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
-$scoresFile = __DIR__ . '/scores.json';
+$scoresFile = 'scores.txt';
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (file_exists($scoresFile)) {
-        echo file_get_contents($scoresFile);
+        $content = file_get_contents($scoresFile);
+        $scores = [];
+        
+        // Парсим данные из текстового файла
+        foreach(explode("\n", $content) as $line) {
+            if (strpos($line, ':') !== false) {
+                list($key, $value) = explode(':', $line, 2);
+                $scores[trim($key)] = trim($value);
+            }
+        }
+        
+        // Преобразуем в нужный формат
+        $data = [
+            'evenTotalScore' => intval($scores['evenTotalScore'] ?? 0),
+            'oddTotalScore' => intval($scores['oddTotalScore'] ?? 0),
+            'evenIPs' => array_filter(explode(',', $scores['evenIPs'] ?? '')),
+            'oddIPs' => array_filter(explode(',', $scores['oddIPs'] ?? ''))
+        ];
+        
+        echo json_encode($data);
     } else {
-        // Создаем файл с начальными данными, если его нет
-        $initialData = [
+        echo json_encode([
             'evenTotalScore' => 0,
             'oddTotalScore' => 0,
             'evenIPs' => [],
             'oddIPs' => []
-        ];
-        file_put_contents($scoresFile, json_encode($initialData));
-        echo json_encode($initialData);
+        ]);
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = file_get_contents('php://input');
@@ -40,8 +56,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
     }
 
-    // Сохраняем данные
-    if (file_put_contents($scoresFile, json_encode($data)) === false) {
+    // Форматируем данные для сохранения
+    $content = "evenTotalScore: " . ($data['evenTotalScore'] ?? 0) . "\n" .
+               "oddTotalScore: " . ($data['oddTotalScore'] ?? 0) . "\n" .
+               "evenIPs: " . implode(',', $data['evenIPs'] ?? []) . "\n" .
+               "oddIPs: " . implode(',', $data['oddIPs'] ?? []);
+    
+    if (file_put_contents($scoresFile, $content) === false) {
         http_response_code(500);
         echo json_encode(['error' => 'Failed to save data']);
         exit;
