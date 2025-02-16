@@ -519,36 +519,24 @@
             }
         }
 
-        // Загружаем сохранённые данные
-        async function loadSavedScores() {
+        // Загружаем сохранённые данные из localStorage
+        function loadLocalScores() {
             try {
-                const snapshot = await database.ref('scores').once('value');
-                const data = snapshot.val() || {
-                    evenTotalScore: 0,
-                    oddTotalScore: 0,
-                    evenIPs: [],
-                    oddIPs: []
-                };
-                
-                evenTotalScore = data.evenTotalScore;
-                oddTotalScore = data.oddTotalScore;
-                evenIPs = new Set(data.evenIPs);
-                oddIPs = new Set(data.oddIPs);
-                
-                // Обновляем отображение
-                document.getElementById('evenScore').textContent = evenTotalScore;
-                document.getElementById('oddScore').textContent = oddTotalScore;
-                document.getElementById('evenIPs').textContent = 
-                    evenIPs.size > 0 ? `IP: ${Array.from(evenIPs).join(', ')}` : 'Нет игроков';
-                document.getElementById('oddIPs').textContent = 
-                    oddIPs.size > 0 ? `IP: ${Array.from(oddIPs).join(', ')}` : 'Нет игроков';
+                const savedData = localStorage.getItem('slotMachineScores');
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    evenTotalScore = data.evenTotalScore || 0;
+                    oddTotalScore = data.oddTotalScore || 0;
+                    evenIPs = new Set(data.evenIPs || []);
+                    oddIPs = new Set(data.oddIPs || []);
+                }
             } catch (error) {
-                console.error('Ошибка при загрузке данных:', error);
+                console.error('Ошибка при загрузке локальных данных:', error);
             }
         }
 
-        // Сохраняем данные
-        async function saveScores() {
+        // Сохраняем данные в localStorage
+        function saveLocalScores() {
             try {
                 const data = {
                     evenTotalScore,
@@ -556,43 +544,10 @@
                     evenIPs: Array.from(evenIPs),
                     oddIPs: Array.from(oddIPs)
                 };
-                
-                await database.ref('scores').set(data);
+                localStorage.setItem('slotMachineScores', JSON.stringify(data));
             } catch (error) {
-                console.error('Ошибка при сохранении данных:', error);
+                console.error('Ошибка при сохранении локальных данных:', error);
             }
-        }
-
-        // Слушаем изменения в реальном времени
-        function startRealtimeUpdates() {
-            database.ref('scores').on('value', (snapshot) => {
-                const data = snapshot.val() || {
-                    evenTotalScore: 0,
-                    oddTotalScore: 0,
-                    evenIPs: [],
-                    oddIPs: []
-                };
-                
-                // Обновляем только если данные действительно изменились
-                if (data.evenTotalScore !== evenTotalScore || 
-                    data.oddTotalScore !== oddTotalScore ||
-                    JSON.stringify(data.evenIPs) !== JSON.stringify(Array.from(evenIPs)) ||
-                    JSON.stringify(data.oddIPs) !== JSON.stringify(Array.from(oddIPs))) {
-                    
-                    evenTotalScore = data.evenTotalScore;
-                    oddTotalScore = data.oddTotalScore;
-                    evenIPs = new Set(data.evenIPs);
-                    oddIPs = new Set(data.oddIPs);
-                    
-                    // Обновляем отображение
-                    document.getElementById('evenScore').textContent = evenTotalScore;
-                    document.getElementById('oddScore').textContent = oddTotalScore;
-                    document.getElementById('evenIPs').textContent = 
-                        evenIPs.size > 0 ? `IP: ${Array.from(evenIPs).join(', ')}` : 'Нет игроков';
-                    document.getElementById('oddIPs').textContent = 
-                        oddIPs.size > 0 ? `IP: ${Array.from(oddIPs).join(', ')}` : 'Нет игроков';
-                }
-            });
         }
 
         // Обновляем общий счёт
@@ -616,12 +571,12 @@
                     `IP: ${Array.from(oddIPs).join(', ')}`;
             }
             
-            saveScores();
+            saveLocalScores();
         }
 
         // Периодически обновляем данные
         function startScoreUpdates() {
-            setInterval(loadSavedScores, 5000); // Обновляем каждые 5 секунд
+            setInterval(loadLocalScores, 5000); // Обновляем каждые 5 секунд
         }
 
         async function spin() {
@@ -671,8 +626,7 @@
 
         // Инициализация
         initializeReels();
-        loadSavedScores();
-        startRealtimeUpdates();
+        loadLocalScores();
     </script>
 </body>
 </html>
