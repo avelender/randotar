@@ -523,12 +523,31 @@
         function loadLocalScores() {
             try {
                 const savedData = localStorage.getItem('slotMachineScores');
+                console.log('Загруженные данные:', savedData);
+                
                 if (savedData) {
                     const data = JSON.parse(savedData);
+                    console.log('Разобранные данные:', data);
+                    
                     evenTotalScore = data.evenTotalScore || 0;
                     oddTotalScore = data.oddTotalScore || 0;
                     evenIPs = new Set(data.evenIPs || []);
                     oddIPs = new Set(data.oddIPs || []);
+                    
+                    // Обновляем отображение сразу после загрузки
+                    document.getElementById('evenScore').textContent = evenTotalScore;
+                    document.getElementById('oddScore').textContent = oddTotalScore;
+                    document.getElementById('evenIPs').textContent = 
+                        evenIPs.size > 0 ? `IP: ${Array.from(evenIPs).join(', ')}` : 'Нет игроков';
+                    document.getElementById('oddIPs').textContent = 
+                        oddIPs.size > 0 ? `IP: ${Array.from(oddIPs).join(', ')}` : 'Нет игроков';
+                        
+                    console.log('Текущие значения после загрузки:', {
+                        evenTotalScore,
+                        oddTotalScore,
+                        evenIPs: Array.from(evenIPs),
+                        oddIPs: Array.from(oddIPs)
+                    });
                 }
             } catch (error) {
                 console.error('Ошибка при загрузке локальных данных:', error);
@@ -544,7 +563,12 @@
                     evenIPs: Array.from(evenIPs),
                     oddIPs: Array.from(oddIPs)
                 };
+                console.log('Сохраняем данные:', data);
                 localStorage.setItem('slotMachineScores', JSON.stringify(data));
+                
+                // Проверяем, что данные сохранились
+                const savedData = localStorage.getItem('slotMachineScores');
+                console.log('Проверка сохранённых данных:', savedData);
             } catch (error) {
                 console.error('Ошибка при сохранении локальных данных:', error);
             }
