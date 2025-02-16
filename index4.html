@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Слот с Эмодзи</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         body {
             display: flex;
@@ -319,6 +321,19 @@
     </div>
 
     <script>
+        // Инициализация Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDxkUVTHJEkF4RCpxgLUl7jvQGsXs5Qwpk",
+            authDomain: "emoji-slot-machine.firebaseapp.com",
+            databaseURL: "https://emoji-slot-machine-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "emoji-slot-machine",
+            storageBucket: "emoji-slot-machine.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef0123456789abcdef"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
         const emojiPrices = {
             '🎮': 100, // Игровые
             '🎲': 100,
@@ -507,13 +522,18 @@
         // Загружаем сохранённые данные
         async function loadSavedScores() {
             try {
-                const response = await fetch('scores.json');
-                const data = await response.json();
+                const snapshot = await database.ref('scores').once('value');
+                const data = snapshot.val() || {
+                    evenTotalScore: 0,
+                    oddTotalScore: 0,
+                    evenIPs: [],
+                    oddIPs: []
+                };
                 
-                evenTotalScore = data.evenTotalScore || 0;
-                oddTotalScore = data.oddTotalScore || 0;
-                evenIPs = new Set(data.evenIPs || []);
-                oddIPs = new Set(data.oddIPs || []);
+                evenTotalScore = data.evenTotalScore;
+                oddTotalScore = data.oddTotalScore;
+                evenIPs = new Set(data.evenIPs);
+                oddIPs = new Set(data.oddIPs);
                 
                 // Обновляем отображение
                 document.getElementById('evenScore').textContent = evenTotalScore;
@@ -527,8 +547,8 @@
             }
         }
 
-        // Сохраняем данные в localStorage для текущего браузера
-        function saveScores() {
+        // Сохраняем данные
+        async function saveScores() {
             try {
                 const data = {
                     evenTotalScore,
@@ -536,10 +556,43 @@
                     evenIPs: Array.from(evenIPs),
                     oddIPs: Array.from(oddIPs)
                 };
-                localStorage.setItem('slotMachineScores', JSON.stringify(data));
+                
+                await database.ref('scores').set(data);
             } catch (error) {
                 console.error('Ошибка при сохранении данных:', error);
             }
+        }
+
+        // Слушаем изменения в реальном времени
+        function startRealtimeUpdates() {
+            database.ref('scores').on('value', (snapshot) => {
+                const data = snapshot.val() || {
+                    evenTotalScore: 0,
+                    oddTotalScore: 0,
+                    evenIPs: [],
+                    oddIPs: []
+                };
+                
+                // Обновляем только если данные действительно изменились
+                if (data.evenTotalScore !== evenTotalScore || 
+                    data.oddTotalScore !== oddTotalScore ||
+                    JSON.stringify(data.evenIPs) !== JSON.stringify(Array.from(evenIPs)) ||
+                    JSON.stringify(data.oddIPs) !== JSON.stringify(Array.from(oddIPs))) {
+                    
+                    evenTotalScore = data.evenTotalScore;
+                    oddTotalScore = data.oddTotalScore;
+                    evenIPs = new Set(data.evenIPs);
+                    oddIPs = new Set(data.oddIPs);
+                    
+                    // Обновляем отображение
+                    document.getElementById('evenScore').textContent = evenTotalScore;
+                    document.getElementById('oddScore').textContent = oddTotalScore;
+                    document.getElementById('evenIPs').textContent = 
+                        evenIPs.size > 0 ? `IP: ${Array.from(evenIPs).join(', ')}` : 'Нет игроков';
+                    document.getElementById('oddIPs').textContent = 
+                        oddIPs.size > 0 ? `IP: ${Array.from(oddIPs).join(', ')}` : 'Нет игроков';
+                }
+            });
         }
 
         // Обновляем общий счёт
@@ -619,7 +672,7 @@
         // Инициализация
         initializeReels();
         loadSavedScores();
-        startScoreUpdates();
+        startRealtimeUpdates();
     </script>
 </body>
 </html>
