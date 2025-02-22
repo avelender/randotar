@@ -288,6 +288,77 @@
             stroke-dasharray: 1000;
             animation: drawLine 0.5s ease-out forwards;
         }
+
+        .history-container {
+            background: #34495e;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            color: white;
+            width: 280px;
+        }
+
+        .history-title {
+            margin: 0 0 15px 0;
+            text-align: center;
+            color: #f1c40f;
+            font-size: 20px;
+        }
+
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .history-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .history-item.win {
+            border-left: 3px solid #2ecc71;
+        }
+
+        .history-item.loss {
+            border-left: 3px solid #e74c3c;
+        }
+
+        .history-item.bonus {
+            border-left: 3px solid #f1c40f;
+        }
+
+        .history-time {
+            color: #95a5a6;
+            font-size: 12px;
+            margin-top: 4px;
+            display: block;
+        }
+
+        /* Стилизация скроллбара для истории */
+        .history-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .history-list::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        .history-list::-webkit-scrollbar-thumb {
+            background: #95a5a6;
+            border-radius: 4px;
+        }
+
+        .history-list::-webkit-scrollbar-thumb:hover {
+            background: #7f8c8d;
+        }
     </style>
 </head>
 <body>
@@ -380,6 +451,11 @@
                 <div class="category-ips" id="oddIPs">No players</div>
             </div>
         </div>
+
+        <div class="history-container">
+            <h2 class="history-title">History</h2>
+            <div class="history-list" id="historyList"></div>
+        </div>
     </div>
 
     <script>
@@ -394,6 +470,59 @@
         let oddTotalScore = 0;
         let evenIPs = new Set();
         let oddIPs = new Set();
+
+        // Функции для работы с историей
+        function addHistoryItem(type, message) {
+            const historyList = document.getElementById('historyList');
+            const item = document.createElement('div');
+            item.className = `history-item ${type}`;
+            
+            const time = new Date();
+            const timeStr = time.toLocaleTimeString();
+            
+            item.innerHTML = `
+                <span>${message}</span>
+                <span class="history-time">${timeStr}</span>
+            `;
+            
+            historyList.insertBefore(item, historyList.firstChild);
+            
+            // Сохраняем историю в localStorage
+            const history = JSON.parse(localStorage.getItem('slotHistory') || '[]');
+            history.unshift({
+                type,
+                message,
+                time: time.getTime(),
+                ip: currentIP
+            });
+            
+            // Ограничиваем историю 100 записями
+            if (history.length > 100) {
+                history.pop();
+            }
+            
+            localStorage.setItem('slotHistory', JSON.stringify(history));
+        }
+
+        // Загрузка истории при старте
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem('slotHistory') || '[]');
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+            
+            history.filter(item => item.ip === currentIP).forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = `history-item ${item.type}`;
+                const time = new Date(item.time);
+                
+                historyItem.innerHTML = `
+                    <span>${item.message}</span>
+                    <span class="history-time">${time.toLocaleTimeString()}</span>
+                `;
+                
+                historyList.appendChild(historyItem);
+            });
+        }
 
         // Загружаем сохранённые данные из Supabase
         async function loadSavedScores() {
@@ -626,6 +755,7 @@
                 
                 // Запускаем таймер
                 startBonusTimer(nextBonusTime);
+                addHistoryItem('bonus', `Bonus received: +100 points`);
             } catch (error) {
                 console.error('Ошибка при получении бонуса:', error);
                 activateBonus(); // В случае ошибки активируем кнопку
@@ -748,6 +878,7 @@
                 }
                 
                 console.log('Инициализация завершена успешно');
+                loadHistory();
             } catch (error) {
                 console.error('Ошибка при инициализации:', error);
             }
@@ -1078,6 +1209,9 @@
                 
                 updateScoreDisplay();
                 saveScores();
+                addHistoryItem('win', `Win: ${winnings} points`);
+            } else {
+                addHistoryItem('loss', `Lost spin: -100 points`);
             }
         }
 
