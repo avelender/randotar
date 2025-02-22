@@ -137,10 +137,24 @@
         }
 
         .controls {
+            margin: 20px 0;
             display: flex;
-            justify-content: center;
             gap: 10px;
-            margin-top: 20px;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .bonus-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .bonus-timer {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+            text-align: center;
         }
 
         .spin-button, .bonus-button {
@@ -237,13 +251,6 @@
             text-align: center;
             color: #95a5a6;
             margin-top: 5px;
-        }
-
-        .bonus-timer {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-            text-align: center;
         }
 
         /* Стили для линий выигрыша */
@@ -353,10 +360,12 @@
             </div>
             <div class="controls">
                 <button class="spin-button">Spin</button>
-                <button class="bonus-button" id="bonusButton">Get Bonus</button>
+                <div class="bonus-group">
+                    <button class="bonus-button" id="bonusButton">Get Bonus</button>
+                    <div class="bonus-timer" id="bonusTimer"></div>
+                </div>
             </div>
             <div class="score">Score: <span class="score-value">0</span></div>
-            <div class="bonus-timer" id="bonusTimer"></div>
         </div>
         <div class="scores-table">
             <h2>Highscores</h2>
