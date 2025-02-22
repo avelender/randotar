@@ -88,6 +88,7 @@
             margin-bottom: 20px;
             box-shadow: 0 2px 5px var(--shadow-color);
             width: 280px;
+            height: fit-content;
         }
 
         .price-category {
@@ -336,6 +337,15 @@
             box-shadow: 0 2px 5px var(--shadow-color);
             color: var(--text-color);
             width: 280px;
+            height: fit-content;
+            max-height: var(--price-list-height, fit-content);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
         }
 
         .history-title {
@@ -343,11 +353,6 @@
             text-align: center;
             color: var(--title-color);
             font-size: 20px;
-        }
-
-        .history-list {
-            max-height: 400px;
-            overflow-y: auto;
         }
 
         .history-item {
@@ -908,6 +913,21 @@
                 } else {
                     activateBonus();
                 }
+                
+                // Синхронизируем высоту блока истории с прайс-листом
+                function syncHistoryHeight() {
+                    const priceList = document.querySelector('.price-list');
+                    const historyContainer = document.querySelector('.history-container');
+                    if (priceList && historyContainer) {
+                        const styles = window.getComputedStyle(priceList);
+                        const height = priceList.offsetHeight - parseInt(styles.marginBottom);
+                        document.documentElement.style.setProperty('--price-list-height', height + 'px');
+                    }
+                }
+
+                // Вызываем сразу и при изменении размера окна
+                syncHistoryHeight();
+                window.addEventListener('resize', syncHistoryHeight);
                 
                 console.log('Инициализация завершена успешно');
             } catch (error) {
