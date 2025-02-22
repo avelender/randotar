@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Случайная вертикальная линия</title>
+    <title>UP</title>
     <style>
         body {
             margin: 0;
             padding: 0;
             height: 100vh;
             overflow: hidden;
+            background-color: #f5f5dc;
         }
         .line {
             position: absolute;
@@ -20,19 +21,17 @@
 <body>
     <script>
         function getRandomColor() {
-            const letters = '0123456789ABCDEF';
-            let color = '#';
-            for (let i = 0; i < 6; i++) {
-                color += letters[Math.floor(Math.random() * 16)];
-            }
-            return color;
+            const r = Math.floor(Math.random() * 256);
+            const g = Math.floor(Math.random() * 256);
+            const b = Math.floor(Math.random() * 256);
+            return `rgba(${r}, ${g}, ${b}, 0.75)`; // 0.75 - это 75% непрозрачности (25% прозрачности)
         }
 
         function createLine() {
             const line = document.createElement('div');
             line.className = 'line';
             line.style.left = Math.random() * 100 + '%';
-            line.style.height = Math.random() * 90 + 1 + '%'; // Случайная длина от 1% до 50% высоты экрана
+            line.style.height = Math.random() * 100 + '%'; // Случайная длина от 0% до 100% высоты экрана
             line.style.width = Math.random() * 100 + 1 + 'px'; // Случайная ширина от 1 до 20 пикселей
             line.style.backgroundColor = getRandomColor(); // Случайный цвет
             line.style.transform = 'translateY(100vh)'; // Начальная позиция за экраном
