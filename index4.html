@@ -85,6 +85,7 @@
             box-shadow: 0 0 20px rgba(0,0,0,0.3);
             text-align: center;
             margin-bottom: 20px;
+            position: relative;
         }
 
         .reels {
@@ -92,6 +93,8 @@
             gap: 10px;
             margin-bottom: 20px;
             position: relative;
+            justify-content: center;
+            padding: 10px;
         }
 
         .reel {
@@ -106,11 +109,11 @@
         .reel-strip {
             position: absolute;
             width: 100%;
+            left: 0;
+            top: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            transition: top 0.1s linear;
-            top: 0;
         }
 
         .emoji-symbol {
@@ -121,6 +124,16 @@
             justify-content: center;
             font-size: 40px;
             flex-shrink: 0;
+        }
+
+        /* Стили для анимации */
+        @keyframes spin {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-840px); }
+        }
+
+        .spinning {
+            animation: spin 0.5s linear infinite;
         }
 
         .controls {
@@ -164,40 +177,6 @@
 
         .spin-button:active, .bonus-button:active {
             transform: scale(0.98);
-        }
-
-        .win-lines {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-
-        .win-line {
-            stroke: #f1c40f;
-            stroke-width: 3;
-            stroke-linecap: round;
-            stroke-dasharray: 1000;
-            stroke-dashoffset: 1000;
-            animation: drawLine 0.8s ease-out forwards;
-            opacity: 0.8;
-        }
-
-        @keyframes spin {
-            0% { top: 0; }
-            100% { top: -900px; }
-        }
-
-        .spinning {
-            animation: spin 0.3s linear infinite;
-        }
-
-        @keyframes drawLine {
-            to {
-                stroke-dashoffset: 0;
-            }
         }
 
         .score {
@@ -266,6 +245,42 @@
             margin-top: 5px;
             text-align: center;
         }
+
+        /* Стили для линий выигрыша */
+        #winLines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .win-line {
+            stroke: #ffff00;
+            stroke-width: 8;
+            stroke-linecap: round;
+            filter: drop-shadow(0 0 8px rgba(255, 255, 0, 1)) 
+                   drop-shadow(0 0 12px rgba(255, 165, 0, 0.8));
+            opacity: 1;
+        }
+
+        @keyframes drawLine {
+            from {
+                stroke-dashoffset: 1000;
+                opacity: 0;
+            }
+            to {
+                stroke-dashoffset: 0;
+                opacity: 1;
+            }
+        }
+
+        .win-line {
+            stroke-dasharray: 1000;
+            animation: drawLine 0.5s ease-out forwards;
+        }
     </style>
 </head>
 <body>
@@ -325,14 +340,20 @@
         </div>
         <div class="slot-machine">
             <div class="reels">
-                <div class="reel" id="reel1"></div>
-                <div class="reel" id="reel2"></div>
-                <div class="reel" id="reel3"></div>
+                <div class="reel">
+                    <div class="reel-strip"></div>
+                </div>
+                <div class="reel">
+                    <div class="reel-strip"></div>
+                </div>
+                <div class="reel">
+                    <div class="reel-strip"></div>
+                </div>
+                <svg id="winLines"></svg>
             </div>
-            <svg class="win-lines" id="winLines"></svg>
             <div class="controls">
-                <button class="spin-button" onclick="spin()">Spin</button>
-                <button class="bonus-button" onclick="claimBonus()" id="bonusButton">Get Bonus</button>
+                <button class="spin-button">Spin</button>
+                <button class="bonus-button" id="bonusButton">Get Bonus</button>
             </div>
             <div class="score">Score: <span class="score-value">0</span></div>
             <div class="bonus-timer" id="bonusTimer"></div>
@@ -358,12 +379,12 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6cGZodWV0eWxhenJra3BvcGNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk3MDI5MTUsImV4cCI6MjA1NTI3ODkxNX0.BhaSWyq5IKhxjTwP14Fw9D-TDe9OYHosXR1mzHA2jqI';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        let currentIP = null;
+        let isSpinning = false;
         let evenTotalScore = 0;
         let oddTotalScore = 0;
-        let currentIP = '';
         let evenIPs = new Set();
         let oddIPs = new Set();
-        let isSpinning = false;
 
         // Загружаем сохранённые данные из Supabase
         async function loadSavedScores() {
@@ -661,12 +682,47 @@
         // Инициализация
         async function initialize() {
             try {
+                console.log('Начало инициализации...');
+                
+                // Сначала получаем IP
+                await getClientIP();
+                console.log('IP получен:', currentIP);
+                
+                // Инициализируем барабаны
                 await initializeReels();
+                console.log('Барабаны инициализированы');
+                
+                // Загружаем сохраненные очки
                 await loadSavedScores();
+                console.log('Очки загружены');
+                
+                // Подписываемся на обновления
                 subscribeToScores();
+                console.log('Подписка на обновления активирована');
+                
+                // Инициализируем кнопку спина
+                const spinButton = document.querySelector('.spin-button');
+                if (spinButton) {
+                    console.log('Кнопка спина найдена');
+                    spinButton.addEventListener('click', () => {
+                        console.log('Клик по кнопке спина');
+                        spin();
+                    });
+                } else {
+                    console.error('Кнопка спина не найдена');
+                }
                 
                 // Инициализируем элементы бонусной системы
                 bonusButton = document.getElementById('bonusButton');
+                if (bonusButton) {
+                    console.log('Кнопка бонуса найдена');
+                    bonusButton.addEventListener('click', () => {
+                        console.log('Клик по кнопке бонуса');
+                        claimBonus();
+                    });
+                } else {
+                    console.error('Кнопка бонуса не найдена');
+                }
                 bonusTimer = document.getElementById('bonusTimer');
                 
                 // Проверяем сохраненное время бонуса
@@ -755,103 +811,30 @@
         }
 
         function initializeReels() {
-            const reels = ['reel1', 'reel2', 'reel3'].map(id => document.getElementById(id));
-            reels.forEach(reel => {
+            const reelStrips = document.querySelectorAll('.reel-strip');
+            reelStrips.forEach(strip => {
                 const symbols = createReelContent();
-                symbols.forEach(symbol => reel.appendChild(symbol));
+                strip.innerHTML = ''; // Очищаем содержимое
+                symbols.forEach(symbol => strip.appendChild(symbol));
             });
         }
 
         function clearWinLines() {
-            const svg = document.getElementById('winLines');
-            svg.innerHTML = '';
+            const winLines = document.getElementById('winLines');
+            if (winLines) {
+                winLines.innerHTML = '';
+            }
         }
 
         function drawWinLine(x1, y1, x2, y2) {
-            const svg = document.getElementById('winLines');
-            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            line.setAttribute('x1', x1);
-            line.setAttribute('y1', y1);
-            line.setAttribute('x2', x2);
-            line.setAttribute('y2', y2);
-            line.classList.add('win-line');
-            svg.appendChild(line);
-        }
-
-        function checkWinningLines() {
-            const reels = ['reel1', 'reel2', 'reel3'].map(id => document.getElementById(id));
-            const symbols = reels.map(reel => {
-                const visibleSymbols = [];
-                const offset = Math.abs(parseInt(reel.style.top || '0')) / 60;
-                for(let i = 0; i < 3; i++) {
-                    const symbol = reel.children[i + Math.floor(offset)];
-                    if(symbol) {
-                        visibleSymbols.push(symbol.textContent);
-                    }
-                }
-                return visibleSymbols;
-            });
-
-            let winnings = 0;
-
-            // Проверяем горизонтальные линии
-            for(let row = 0; row < 3; row++) {
-                for(let col = 0; col < 2; col++) {
-                    if(symbols[col][row] === symbols[col + 1][row]) {
-                        const x1 = 40 + col * 90;
-                        const x2 = 40 + (col + 1) * 90;
-                        const y = 30 + row * 60;
-                        drawWinLine(x1, y, x2, y);
-                        winnings += emojiPrices[symbols[col][row]];
-                    }
-                }
-            }
-
-            // Проверяем диагональные линии (сверху вниз)
-            for(let row = 0; row < 2; row++) {
-                for(let col = 0; col < 2; col++) {
-                    if(symbols[col][row] === symbols[col + 1][row + 1]) {
-                        const x1 = 40 + col * 90;
-                        const y1 = 30 + row * 60;
-                        const x2 = 40 + (col + 1) * 90;
-                        const y2 = 30 + (row + 1) * 60;
-                        drawWinLine(x1, y1, x2, y2);
-                        winnings += emojiPrices[symbols[col][row]];
-                    }
-                }
-            }
-
-            // Проверяем диагональные линии (снизу вверх)
-            for(let row = 1; row < 3; row++) {
-                for(let col = 0; col < 2; col++) {
-                    if(symbols[col][row] === symbols[col + 1][row - 1]) {
-                        const x1 = 40 + col * 90;
-                        const y1 = 30 + row * 60;
-                        const x2 = 40 + (col + 1) * 90;
-                        const y2 = 30 + (row - 1) * 60;
-                        drawWinLine(x1, y1, x2, y2);
-                        winnings += emojiPrices[symbols[col][row]];
-                    }
-                }
-            }
-
-            // Проверяем вертикальные линии
-            for(let col = 0; col < 3; col++) {
-                for(let row = 0; row < 2; row++) {
-                    if(symbols[col][row] === symbols[col][row + 1]) {
-                        const x = 40 + col * 90;
-                        const y1 = 30 + row * 60;
-                        const y2 = 30 + (row + 1) * 60;
-                        drawWinLine(x, y1, x, y2);
-                        winnings += emojiPrices[symbols[col][row]];
-                    }
-                }
-            }
-
-            if(winnings > 0) {
-                updateScore(winnings);
-                updateTotalScore(winnings);
-            }
+            const winLines = document.getElementById('winLines');
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", x1);
+            line.setAttribute("y1", y1);
+            line.setAttribute("x2", x2);
+            line.setAttribute("y2", y2);
+            line.setAttribute("class", "win-line");
+            winLines.appendChild(line);
         }
 
         async function spin() {
@@ -890,29 +873,29 @@
             isSpinning = true;
             clearWinLines();
             
-            const reels = [
-                document.getElementById('reel1'),
-                document.getElementById('reel2'),
-                document.getElementById('reel3')
-            ];
-            
+            const reelStrips = document.querySelectorAll('.reel-strip');
             const button = document.querySelector('.spin-button');
             button.disabled = true;
 
-            reels.forEach((reel, index) => {
-                const newSymbols = createReelContent();
-                reel.innerHTML = '';
-                newSymbols.forEach(symbol => reel.appendChild(symbol));
+            // Создаем новые символы для каждого барабана
+            const newReelContents = Array(3).fill(null).map(() => createReelContent());
+            
+            reelStrips.forEach((strip, index) => {
+                // Очищаем и добавляем новые символы
+                strip.innerHTML = '';
+                newReelContents[index].forEach(symbol => strip.appendChild(symbol));
                 
-                reel.classList.add('spinning');
+                // Запускаем анимацию
+                strip.classList.add('spinning');
                 
+                // Останавливаем барабан через определенное время
                 setTimeout(() => {
-                    reel.classList.remove('spinning');
-                    reel.style.transition = 'top 0.5s cubic-bezier(0.3, 0, 0, 1)';
-                    
+                    strip.classList.remove('spinning');
+                    // Генерируем случайную позицию остановки (0, 60 или 120 пикселей)
                     const stopPosition = Math.floor(Math.random() * 3) * 60;
-                    reel.style.top = `-${stopPosition}px`;
+                    strip.style.transform = `translateY(-${stopPosition}px)`;
                     
+                    // Если это последний барабан
                     if (index === 2) {
                         setTimeout(() => {
                             isSpinning = false;
@@ -920,8 +903,173 @@
                             checkWinningLines();
                         }, 500);
                     }
-                }, 2000 + index * 700);
+                }, 2000 + index * 700); // Каждый следующий барабан останавливается с задержкой
             });
+        }
+
+        function checkWinningLines() {
+            const reelStrips = document.querySelectorAll('.reel-strip');
+            const symbols = Array.from(reelStrips).map(strip => {
+                const visibleSymbols = [];
+                const offset = Math.abs(parseInt(strip.style.transform?.match(/-?\d+/)?.[0] || '0')) / 60;
+                for(let i = 0; i < 3; i++) {
+                    const symbol = strip.children[i + Math.floor(offset)];
+                    if(symbol) {
+                        visibleSymbols.push(symbol.textContent);
+                    }
+                }
+                return visibleSymbols;
+            });
+
+            let winnings = 0;
+
+            // Константы для позиционирования
+            const reelWidth = 80;    // Ширина барабана
+            const symbolHeight = 60;  // Высота символа
+            const reelGap = 10;      // Расстояние между барабанами
+            const offsetX = 10;      // Уменьшили смещение по X с 15 до 10
+            const offsetY = 15;      // Уменьшили смещение по Y с 20 до 15
+
+            // Функция для получения координат центра символа
+            function getSymbolCenter(col, row) {
+                const x = col * (reelWidth + reelGap) + offsetX + reelWidth/2;
+                const y = row * symbolHeight + offsetY + symbolHeight/2;
+                return { x, y };
+            }
+
+            // Проверяем горизонтальные линии
+            for(let row = 0; row < 3; row++) {
+                if(symbols[0][row] === symbols[1][row] && symbols[1][row] === symbols[2][row]) {
+                    const start = getSymbolCenter(0, row);
+                    const end = getSymbolCenter(2, row);
+                    drawWinLine(start.x, start.y, end.x, end.y);
+                    winnings += emojiPrices[symbols[0][row]] * 3;
+                } else {
+                    if(symbols[0][row] === symbols[1][row]) {
+                        const start = getSymbolCenter(0, row);
+                        const end = getSymbolCenter(1, row);
+                        drawWinLine(start.x, start.y, end.x, end.y);
+                        winnings += emojiPrices[symbols[0][row]] * 2;
+                    }
+                    if(symbols[1][row] === symbols[2][row]) {
+                        const start = getSymbolCenter(1, row);
+                        const end = getSymbolCenter(2, row);
+                        drawWinLine(start.x, start.y, end.x, end.y);
+                        winnings += emojiPrices[symbols[1][row]] * 2;
+                    }
+                }
+            }
+
+            // Проверяем вертикальные линии
+            for(let col = 0; col < 3; col++) {
+                if(symbols[col][0] === symbols[col][1] && symbols[col][1] === symbols[col][2]) {
+                    const start = getSymbolCenter(col, 0);
+                    const end = getSymbolCenter(col, 2);
+                    drawWinLine(start.x, start.y, end.x, end.y);
+                    winnings += emojiPrices[symbols[col][0]] * 3;
+                } else {
+                    if(symbols[col][0] === symbols[col][1]) {
+                        const start = getSymbolCenter(col, 0);
+                        const end = getSymbolCenter(col, 1);
+                        drawWinLine(start.x, start.y, end.x, end.y);
+                        winnings += emojiPrices[symbols[col][0]] * 2;
+                    }
+                    if(symbols[col][1] === symbols[col][2]) {
+                        const start = getSymbolCenter(col, 1);
+                        const end = getSymbolCenter(col, 2);
+                        drawWinLine(start.x, start.y, end.x, end.y);
+                        winnings += emojiPrices[symbols[col][1]] * 2;
+                    }
+                }
+            }
+
+            // Проверяем диагональные линии
+            // Главная диагональ (сверху слева вниз направо)
+            if(symbols[0][0] === symbols[1][1] && symbols[1][1] === symbols[2][2]) {
+                const start = getSymbolCenter(0, 0);
+                const end = getSymbolCenter(2, 2);
+                drawWinLine(start.x, start.y, end.x, end.y);
+                winnings += emojiPrices[symbols[0][0]] * 3;
+            } else {
+                if(symbols[0][0] === symbols[1][1]) {
+                    const start = getSymbolCenter(0, 0);
+                    const end = getSymbolCenter(1, 1);
+                    drawWinLine(start.x, start.y, end.x, end.y);
+                    winnings += emojiPrices[symbols[0][0]] * 2;
+                }
+                if(symbols[1][1] === symbols[2][2]) {
+                    const start = getSymbolCenter(1, 1);
+                    const end = getSymbolCenter(2, 2);
+                    drawWinLine(start.x, start.y, end.x, end.y);
+                    winnings += emojiPrices[symbols[1][1]] * 2;
+                }
+            }
+
+            // Обратная диагональ (снизу слева вверх направо)
+            if(symbols[0][2] === symbols[1][1] && symbols[1][1] === symbols[2][0]) {
+                const start = getSymbolCenter(0, 2);
+                const end = getSymbolCenter(2, 0);
+                drawWinLine(start.x, start.y, end.x, end.y);
+                winnings += emojiPrices[symbols[0][2]] * 3;
+            } else {
+                if(symbols[0][2] === symbols[1][1]) {
+                    const start = getSymbolCenter(0, 2);
+                    const end = getSymbolCenter(1, 1);
+                    drawWinLine(start.x, start.y, end.x, end.y);
+                    winnings += emojiPrices[symbols[0][2]] * 2;
+                }
+                if(symbols[1][1] === symbols[2][0]) {
+                    const start = getSymbolCenter(1, 1);
+                    const end = getSymbolCenter(2, 0);
+                    drawWinLine(start.x, start.y, end.x, end.y);
+                    winnings += emojiPrices[symbols[1][1]] * 2;
+                }
+            }
+
+            // Дополнительные короткие диагонали
+            // Сверху слева вниз направо
+            if(symbols[0][1] === symbols[1][2]) {
+                const start = getSymbolCenter(0, 1);
+                const end = getSymbolCenter(1, 2);
+                drawWinLine(start.x, start.y, end.x, end.y);
+                winnings += emojiPrices[symbols[0][1]] * 2;
+            }
+            if(symbols[1][0] === symbols[2][1]) {
+                const start = getSymbolCenter(1, 0);
+                const end = getSymbolCenter(2, 1);
+                drawWinLine(start.x, start.y, end.x, end.y);
+                winnings += emojiPrices[symbols[1][0]] * 2;
+            }
+
+            // Снизу слева вверх направо
+            if(symbols[0][1] === symbols[1][0]) {
+                const start = getSymbolCenter(0, 1);
+                const end = getSymbolCenter(1, 0);
+                drawWinLine(start.x, start.y, end.x, end.y);
+                winnings += emojiPrices[symbols[0][1]] * 2;
+            }
+            if(symbols[1][2] === symbols[2][1]) {
+                const start = getSymbolCenter(1, 2);
+                const end = getSymbolCenter(2, 1);
+                drawWinLine(start.x, start.y, end.x, end.y);
+                winnings += emojiPrices[symbols[1][2]] * 2;
+            }
+
+            if(winnings > 0) {
+                const lastDigit = parseInt(currentIP.split('.').pop());
+                const isEven = lastDigit % 2 === 0;
+                
+                if(isEven) {
+                    evenTotalScore += winnings;
+                    evenIPs.add(currentIP.split('.').pop());
+                } else {
+                    oddTotalScore += winnings;
+                    oddIPs.add(currentIP.split('.').pop());
+                }
+                
+                updateScoreDisplay();
+                saveScores();
+            }
         }
 
         // Запускаем инициализацию
