@@ -316,6 +316,8 @@
             border-radius: 8px;
             margin-bottom: 10px;
             font-size: 14px;
+            animation: slideIn 0.3s ease-out forwards;
+            opacity: 0;
         }
 
         .history-item:last-child {
@@ -358,6 +360,18 @@
 
         .history-list::-webkit-scrollbar-thumb:hover {
             background: #7f8c8d;
+        }
+
+        /* Анимация для элементов истории */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
     </style>
 </head>
@@ -476,6 +490,7 @@
             const historyList = document.getElementById('historyList');
             const item = document.createElement('div');
             item.className = `history-item ${type}`;
+            item.style.opacity = '0'; // Начальное состояние
             
             const time = new Date();
             const timeStr = time.toLocaleTimeString();
@@ -485,7 +500,17 @@
                 <span class="history-time">${timeStr}</span>
             `;
             
-            historyList.insertBefore(item, historyList.firstChild);
+            // Добавляем элемент в начало списка
+            if (historyList.firstChild) {
+                historyList.insertBefore(item, historyList.firstChild);
+            } else {
+                historyList.appendChild(item);
+            }
+            
+            // Запускаем анимацию в следующем кадре
+            requestAnimationFrame(() => {
+                item.style.opacity = '1';
+            });
             
             // Сохраняем историю в localStorage
             const history = JSON.parse(localStorage.getItem('slotHistory') || '[]');
@@ -510,17 +535,24 @@
             const historyList = document.getElementById('historyList');
             historyList.innerHTML = '';
             
-            history.filter(item => item.ip === currentIP).forEach(item => {
+            history.filter(item => item.ip === currentIP).forEach((item, index) => {
                 const historyItem = document.createElement('div');
                 historyItem.className = `history-item ${item.type}`;
-                const time = new Date(item.time);
+                historyItem.style.opacity = '0';
+                historyItem.style.animationDelay = `${index * 0.1}s`; // Добавляем задержку для каскадной анимации
                 
+                const time = new Date(item.time);
                 historyItem.innerHTML = `
                     <span>${item.message}</span>
                     <span class="history-time">${time.toLocaleTimeString()}</span>
                 `;
                 
                 historyList.appendChild(historyItem);
+                
+                // Запускаем анимацию в следующем кадре
+                requestAnimationFrame(() => {
+                    historyItem.style.opacity = '1';
+                });
             });
         }
 
@@ -1209,7 +1241,16 @@
                 
                 updateScoreDisplay();
                 saveScores();
-                addHistoryItem('win', `Win: ${winnings} points`);
+
+                // Показываем чистый выигрыш (за вычетом стоимости спина)
+                const netWin = winnings - 100;
+                if (netWin > 0) {
+                    addHistoryItem('win', `Win: +${netWin} points`);
+                } else if (netWin === 0) {
+                    addHistoryItem('loss', `Break even: 0 points`);
+                } else {
+                    addHistoryItem('loss', `Lost spin: -100 points`);
+                }
             } else {
                 addHistoryItem('loss', `Lost spin: -100 points`);
             }
