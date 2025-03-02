@@ -21,6 +21,7 @@ class ImageSorter:
         self.folders = []
         self.folder_hotkeys = {}  # Словарь для хранения горячих клавиш папок
         self.processed_images = 0  # Счетчик обработанных изображений
+        self.total_images = 0  # Общее количество изображений
         self.resize_timer = None  # Таймер для отложенного обновления размера
         
         # Получаем путь к папке, в которой находится скрипт
@@ -32,11 +33,20 @@ class ImageSorter:
         # Поддерживаемые форматы изображений
         self.image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
         
-        # Загружаем список папок
-        self.folders = self.get_existing_folders()
-        
         # Создаем интерфейс
         self.create_ui()
+        
+        # Привязываем обработчик закрытия окна
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
+        # Запускаем загрузку в фоне после создания интерфейса
+        self.root.after(100, self.initialize_app)
+    
+    def initialize_app(self):
+        """Инициализация приложения после создания интерфейса"""
+        # Загружаем список папок
+        self.folders = self.get_existing_folders()
+        self.create_folder_buttons()
         
         # Загружаем изображения
         self.load_images()
@@ -51,16 +61,17 @@ class ImageSorter:
         
         # Отслеживаем состояние полноэкранного режима
         self.is_fullscreen = False
+    
+    def on_closing(self):
+        """Обработчик закрытия окна"""
+        # Очищаем ссылки на изображения
+        self.current_image = None
+        self.current_photo = None
+        self.image_label.configure(image='')
         
-        # Добавляем обработчик для кнопки максимизации окна
-        self.root.bind("<Map>", self.on_window_map)
-        self.root.bind("<Unmap>", self.on_window_map)
-        
-        # Показываем первое изображение
-        if self.image_files:
-            self.show_image(0)
-        else:
-            self.status_var.set("Изображения не найдены в текущей папке")
+        # Закрываем окно
+        self.root.quit()
+        self.root.destroy()
     
     def get_existing_folders(self):
         """Получает список существующих папок в директории"""
@@ -323,12 +334,17 @@ class ImageSorter:
             # Получаем список всех файлов с изображениями
             self.image_files = [
                 os.path.join(self.app_path, f) for f in os.listdir(self.app_path)
-                if os.path.splitext(f)[1].lower() in self.image_extensions
+                if os.path.isfile(os.path.join(self.app_path, f)) and  # Проверяем что это файл
+                os.path.splitext(f)[1].lower() in self.image_extensions
             ]
             
             if self.image_files:
                 # Сортируем файлы по имени
                 self.image_files.sort()
+                # Обновляем общее количество изображений
+                self.total_images = len(self.image_files)
+                # Обновляем счетчик
+                self.update_counter()
                 # Показываем первое изображение
                 self.show_image(0)
                 self.status_var.set("Готово")
@@ -337,6 +353,10 @@ class ImageSorter:
                 
         except Exception as e:
             self.status_var.set(f"Ошибка при сканировании: {str(e)}")
+    
+    def update_counter(self):
+        """Обновляет счетчик обработанных изображений"""
+        self.images_count_var.set(f"Обработано: {self.processed_images}/{self.total_images}")
     
     def on_window_resize(self, event):
         """Обработчик изменения размера окна"""
@@ -444,7 +464,7 @@ class ImageSorter:
             
             # Увеличиваем счетчик обработанных изображений
             self.processed_images += 1
-            self.images_count_var.set(f"Обработано: {self.processed_images}")
+            self.update_counter()
             
         except Exception as e:
             messagebox.showerror("Ошибка", f"Не удалось переместить файл: {str(e)}")
