@@ -15,11 +15,13 @@ class ImageSorter:
         
         # Инициализируем переменные
         self.current_image = None
+        self.current_photo = None  # Сохраняем ссылку на PhotoImage
         self.image_files = []
         self.current_index = -1
         self.folders = []
         self.folder_hotkeys = {}  # Словарь для хранения горячих клавиш папок
         self.processed_images = 0  # Счетчик обработанных изображений
+        self.resize_timer = None  # Таймер для отложенного обновления размера
         
         # Получаем путь к папке, в которой находится скрипт
         if getattr(sys, 'frozen', False):
@@ -28,7 +30,7 @@ class ImageSorter:
             self.app_path = os.path.dirname(os.path.abspath(__file__))
         
         # Поддерживаемые форматы изображений
-        self.image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+        self.image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
         
         # Загружаем список папок
         self.folders = self.get_existing_folders()
@@ -95,19 +97,6 @@ class ImageSorter:
         skip_hotkey = ttk.Label(skip_frame, text="[Space]", padding=(5, 0))
         skip_hotkey.pack(side=tk.LEFT)
         
-        # Информация
-        info_frame = ttk.LabelFrame(sidebar, text="Информация", padding=(5, 5))
-        info_frame.pack(fill=tk.X, pady=10)
-        
-        # Текущий файл
-        self.filename_var = tk.StringVar()
-        filename_label = ttk.Label(info_frame, textvariable=self.filename_var, wraplength=250)  # Ограничиваем ширину текста
-        filename_label.pack(anchor=tk.W, pady=(0, 5), fill=tk.X)
-        
-        # Счетчик обработанных
-        self.images_count_var = tk.StringVar(value="Обработано: 0")
-        ttk.Label(info_frame, textvariable=self.images_count_var).pack(anchor=tk.W)
-        
         # Создаем фрейм для списка папок
         self.folders_frame = ttk.Frame(sidebar)
         self.folders_frame.pack(fill=tk.BOTH, expand=True)
@@ -122,6 +111,19 @@ class ImageSorter:
         # Кнопка добавления новой папки
         add_btn = ttk.Button(sidebar, text="+ Добавить папку", command=self.add_folder)
         add_btn.pack(fill=tk.X, pady=(10, 0))
+        
+        # Информация
+        info_frame = ttk.LabelFrame(sidebar, text="Информация", padding=(5, 5))
+        info_frame.pack(fill=tk.X, pady=10)
+        
+        # Текущий файл
+        self.filename_var = tk.StringVar()
+        filename_label = ttk.Label(info_frame, textvariable=self.filename_var, wraplength=250)  # Ограничиваем ширину текста
+        filename_label.pack(anchor=tk.W, pady=(0, 5), fill=tk.X)
+        
+        # Счетчик обработанных
+        self.images_count_var = tk.StringVar(value="Обработано: 0")
+        ttk.Label(info_frame, textvariable=self.images_count_var).pack(anchor=tk.W)
         
         # Статус
         self.status_var = tk.StringVar(value="Загрузка изображений...")
@@ -316,33 +318,75 @@ class ImageSorter:
             self.root.bind(hotkey, lambda e, idx=idx: self.move_to_folder(idx))
     
     def load_images(self):
-        threading.Thread(target=self._load_images_thread, daemon=True).start()
+        """Загружает список изображений из текущей директории"""
+        try:
+            # Получаем список всех файлов с изображениями
+            self.image_files = [
+                os.path.join(self.app_path, f) for f in os.listdir(self.app_path)
+                if os.path.splitext(f)[1].lower() in self.image_extensions
+            ]
+            
+            if self.image_files:
+                # Сортируем файлы по имени
+                self.image_files.sort()
+                # Показываем первое изображение
+                self.show_image(0)
+                self.status_var.set("Готово")
+            else:
+                self.status_var.set("Изображения не найдены в текущей папке")
+                
+        except Exception as e:
+            self.status_var.set(f"Ошибка при сканировании: {str(e)}")
     
-    def _load_images_thread(self):
-        self.image_files = []
-        
-        # Сканируем текущую папку на наличие изображений
-        for file in os.listdir(self.app_path):
-            file_path = os.path.join(self.app_path, file)
-            if os.path.isfile(file_path):
-                file_ext = os.path.splitext(file)[1].lower()
-                if file_ext in self.image_extensions:
-                    self.image_files.append(file_path)
-        
-        # Сортируем файлы по имени
-        self.image_files.sort()
-        
-        # Обновляем интерфейс в основном потоке
-        self.root.after(0, self._update_after_load)
+    def on_window_resize(self, event):
+        """Обработчик изменения размера окна"""
+        # Проверяем, что событие пришло от главного окна
+        if event.widget == self.root:
+            # Отменяем предыдущий отложенный вызов
+            if self.resize_timer:
+                self.root.after_cancel(self.resize_timer)
+            # Создаем новый отложенный вызов
+            self.resize_timer = self.root.after(100, self.update_image_size)
     
-    def _update_after_load(self):
-        if self.image_files:
-            self.status_var.set(f"Найдено {len(self.image_files)} изображений")
-            self.show_image(0)
+    def update_image_size(self):
+        """Обновляет размер изображения в соответствии с размером окна"""
+        if not self.current_image:
+            return
+            
+        # Получаем размеры области отображения
+        frame_width = self.image_frame.winfo_width()
+        frame_height = self.image_frame.winfo_height()
+        
+        if frame_width <= 1 or frame_height <= 1:  # Окно еще не отрисовано
+            self.resize_timer = self.image_frame.after(100, self.update_image_size)
+            return
+            
+        # Получаем размеры изображения
+        img_width, img_height = self.current_image.size
+        
+        # Вычисляем соотношение сторон
+        frame_ratio = frame_width / frame_height
+        img_ratio = img_width / img_height
+        
+        # Определяем новые размеры
+        if frame_ratio > img_ratio:
+            # Ограничение по высоте
+            new_height = frame_height
+            new_width = int(new_height * img_ratio)
         else:
-            self.status_var.set("Изображения не найдены в текущей папке")
+            # Ограничение по ширине
+            new_width = frame_width
+            new_height = int(new_width / img_ratio)
+        
+        # Масштабируем изображение
+        resized_image = self.current_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        # Создаем новый PhotoImage и сохраняем ссылку
+        self.current_photo = ImageTk.PhotoImage(resized_image)
+        self.image_label.configure(image=self.current_photo)
     
     def show_image(self, index):
+        """Показывает изображение с указанным индексом"""
         if not self.image_files or index < 0 or index >= len(self.image_files):
             return
         
@@ -357,48 +401,12 @@ class ImageSorter:
         try:
             # Загружаем изображение с помощью PIL
             self.current_image = Image.open(file_path)
-            self.update_image_size()
+            
+            # Привязываем обновление размера к следующему циклу событий
+            self.root.after_idle(self.update_image_size)
             
         except Exception as e:
             messagebox.showerror("Ошибка", f"Не удалось загрузить изображение: {str(e)}")
-    
-    def update_image_size(self):
-        """Обновляет размер изображения в соответствии с размером окна"""
-        if not self.current_image:
-            return
-            
-        # Получаем размеры фрейма для изображения
-        frame_width = self.image_frame.winfo_width()
-        frame_height = self.image_frame.winfo_height()
-        
-        # Если размеры фрейма еще не определены, используем значения по умолчанию
-        if frame_width <= 1:
-            frame_width = 800
-        if frame_height <= 1:
-            frame_height = 600
-        
-        # Масштабируем изображение, сохраняя пропорции
-        img_width, img_height = self.current_image.size
-        scale = min(frame_width / img_width, frame_height / img_height)
-        
-        new_width = int(img_width * scale)
-        new_height = int(img_height * scale)
-        
-        # Изменяем размер изображения
-        resized_image = self.current_image.resize((new_width, new_height), Image.LANCZOS)
-        
-        # Преобразуем в формат, подходящий для Tkinter
-        photo = ImageTk.PhotoImage(resized_image)
-        
-        # Обновляем изображение в метке
-        self.image_label.configure(image=photo)
-        self.image_label.image = photo
-    
-    def on_window_resize(self, event):
-        """Обработчик изменения размера окна"""
-        # Проверяем, что событие пришло от главного окна
-        if event.widget == self.root:
-            self.update_image_size()
     
     def show_next_image(self):
         self.show_image(self.current_index + 1)
@@ -414,12 +422,13 @@ class ImageSorter:
         try:
             # Создаем папку, если её нет
             folder_name = self.folders[folder_index]
-            if not os.path.exists(folder_name):
-                os.makedirs(folder_name)
+            folder_path = os.path.join(self.app_path, folder_name)
+            if not os.path.exists(folder_path):
+                os.makedirs(folder_path)
             
             # Перемещаем файл
             src = self.image_files[self.current_index]
-            dst = os.path.join(folder_name, os.path.basename(src))
+            dst = os.path.join(folder_path, os.path.basename(src))
             shutil.move(src, dst)
             
             # Удаляем файл из списка и показываем следующий
