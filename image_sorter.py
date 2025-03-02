@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from PIL import Image, ImageTk
 import threading
+import time
 
 class ImageSorter:
     def __init__(self, root):
@@ -23,6 +24,12 @@ class ImageSorter:
         self.processed_images = 0  # Счетчик обработанных изображений
         self.total_images = 0  # Общее количество изображений
         self.resize_timer = None  # Таймер для отложенного обновления размера
+        self.is_processing = False  # Флаг для защиты от двойного клика
+        self.folder_buttons = {}  # Словарь для хранения кнопок папок
+        self.current_file = None  # Текущий обрабатываемый файл
+        self.processing_lock = False  # Блокировка обработки
+        self.animation_frames = []  # Кадры анимации
+        self.animation_timer = None  # Таймер для анимации
         
         # Получаем путь к папке, в которой находится скрипт
         if getattr(sys, 'frozen', False):
@@ -149,23 +156,35 @@ class ImageSorter:
         self.image_label.pack(fill=tk.BOTH, expand=True)
     
     def create_folder_buttons(self):
-        """Создает кнопки для всех папок"""
-        # Очищаем фрейм кнопок
+        """Создает кнопки для каждой папки"""
+        # Очищаем словарь кнопок
+        self.folder_buttons.clear()
+        
+        # Удаляем старые кнопки
         for widget in self.buttons_frame.winfo_children():
             widget.destroy()
         
-        # Создаем кнопки для папок
+        # Создаем новые кнопки для каждой папки
         for i, folder in enumerate(self.folders):
             frame = ttk.Frame(self.buttons_frame)
             frame.pack(fill=tk.X, pady=2)
             
-            # Кнопка для перемещения файла
+            # Создаем кнопку
             btn = ttk.Button(
                 frame,
                 text=folder,
-                command=lambda idx=i: self.move_to_folder(idx)
             )
+            # Привязываем обработчик через bind вместо command
+            btn.bind('<Button-1>', lambda e, idx=i: self.handle_folder_click(e, idx))
             btn.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            
+            # Сохраняем кнопку в словарь
+            self.folder_buttons[folder] = btn
+            
+            # Добавляем метку с горячей клавишей
+            if folder in self.folder_hotkeys:
+                hotkey_label = ttk.Label(frame, text=f"[{self.folder_hotkeys[folder]}]", padding=(5, 0))
+                hotkey_label.pack(side=tk.LEFT)
             
             # Кнопка выбора горячей клавиши
             hotkey = self.folder_hotkeys.get(folder, str(i + 1))
@@ -194,6 +213,97 @@ class ImageSorter:
                 command=lambda f=folder: self.delete_folder(f)
             )
             del_btn.pack(side=tk.LEFT)
+    
+    def handle_folder_click(self, event, folder_index):
+        """Обработчик клика по кнопке папки"""
+        # Получаем кнопку, на которую нажали
+        btn = event.widget
+        
+        # Проверяем блокировки
+        if self.processing_lock or str(btn['state']) == 'disabled':
+            return
+            
+        # Проверяем базовые условия
+        if not self.current_image or folder_index >= len(self.folders):
+            return
+            
+        try:
+            # Устанавливаем блокировку
+            self.processing_lock = True
+            
+            # Проверяем, что текущий файл существует и не изменился
+            if not self.current_file or self.current_file != self.image_files[self.current_index]:
+                return
+                
+            # Проверяем, существует ли исходный файл
+            src = self.image_files[self.current_index]
+            if not os.path.exists(src):
+                return
+                
+            # Блокируем все кнопки папок
+            for btn in self.folder_buttons.values():
+                btn.configure(state='disabled')
+            
+            # Создаем папку, если её нет
+            folder_name = self.folders[folder_index]
+            folder_path = os.path.join(self.app_path, folder_name)
+            if not os.path.exists(folder_path):
+                os.makedirs(folder_path)
+            
+            # Получаем путь назначения
+            dst = os.path.join(folder_path, os.path.basename(src))
+            
+            # Закрываем текущее изображение и очищаем память
+            if self.current_image:
+                self.current_image.close()
+            self.current_image = None
+            self.current_photo = None
+            self.image_label.configure(image='')
+            
+            # Даем время на освобождение файла
+            self.root.update()
+            time.sleep(0.1)
+            
+            # Пробуем разные способы перемещения файла
+            success = False
+            try:
+                # Сначала пробуем просто переместить
+                shutil.move(src, dst)
+                success = True
+            except:
+                try:
+                    # Если не получилось, пробуем копировать и удалить
+                    shutil.copy2(src, dst)
+                    os.remove(src)
+                    success = True
+                except:
+                    pass
+            
+            if success:
+                # Удаляем файл из списка и показываем следующий
+                self.image_files.pop(self.current_index)
+                if self.image_files:
+                    if self.current_index >= len(self.image_files):
+                        self.current_index = 0
+                    self.show_image(self.current_index)
+                else:
+                    self.current_image = None
+                    self.current_file = None
+                    self.image_label.configure(image='')
+                    self.status_var.set("Все изображения обработаны")
+                
+                # Увеличиваем счетчик обработанных изображений
+                self.processed_images += 1
+                self.update_counter()
+            else:
+                # Если не удалось переместить, просто пропускаем файл
+                self.show_next_image()
+            
+        finally:
+            # Разблокируем кнопки и снимаем блокировку
+            self.processing_lock = False
+            for btn in self.folder_buttons.values():
+                btn.configure(state='normal')
     
     def show_hotkey_menu(self, folder):
         """Показывает меню выбора горячей клавиши"""
@@ -410,23 +520,108 @@ class ImageSorter:
         if not self.image_files or index < 0 or index >= len(self.image_files):
             return
         
-        self.current_index = index
-        file_path = self.image_files[index]
-        file_name = os.path.basename(file_path)
-        name, ext = os.path.splitext(file_name)
-        
-        # Обновляем имя файла
-        self.filename_var.set(f"Файл: {name} [{ext.lower()}]")
-        
         try:
-            # Загружаем изображение с помощью PIL
-            self.current_image = Image.open(file_path)
+            # Останавливаем предыдущую анимацию если была
+            if self.animation_timer:
+                self.root.after_cancel(self.animation_timer)
+                self.animation_timer = None
+            self.animation_frames.clear()
             
-            # Привязываем обновление размера к следующему циклу событий
-            self.root.after_idle(self.update_image_size)
+            # Сохраняем текущий файл
+            self.current_file = self.image_files[index]
+            
+            # Загружаем и отображаем изображение
+            self.current_index = index
+            self.current_image = Image.open(self.image_files[index])
+            
+            # Проверяем, является ли изображение анимированным GIF
+            is_animated = False
+            try:
+                is_animated = 'duration' in self.current_image.info and self.current_image.info['duration'] > 0
+            except:
+                pass
+                
+            if is_animated:
+                # Загружаем все кадры анимации
+                try:
+                    while True:
+                        # Копируем текущий кадр
+                        frame = self.current_image.copy()
+                        # Масштабируем кадр
+                        scaled_frame = self.scale_image(frame)
+                        # Конвертируем в PhotoImage
+                        photo = ImageTk.PhotoImage(scaled_frame)
+                        self.animation_frames.append(photo)
+                        # Переходим к следующему кадру
+                        self.current_image.seek(self.current_image.tell() + 1)
+                except EOFError:
+                    pass  # Достигнут конец файла (все кадры загружены)
+                
+                # Показываем первый кадр
+                if self.animation_frames:
+                    self.current_photo = self.animation_frames[0]
+                    self.image_label.configure(image=self.animation_frames[0])
+                    # Запускаем анимацию
+                    self.animate_gif(0)
+            else:
+                # Обычное изображение
+                self.update_image_size()
+            
+            # Обновляем информацию о файле
+            filename = os.path.basename(self.image_files[index])
+            filesize = os.path.getsize(self.image_files[index])
+            self.filename_var.set(f"Файл: {filename}\nРазмер: {self.format_file_size(filesize)}")
+            
+            # Разблокируем все кнопки папок
+            for btn in self.folder_buttons.values():
+                btn.configure(state='normal')
             
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Не удалось загрузить изображение: {str(e)}")
+            self.status_var.set(f"Ошибка при загрузке изображения: {str(e)}")
+    
+    def animate_gif(self, frame_index):
+        """Показывает следующий кадр анимированного GIF"""
+        if not self.animation_frames:
+            return
+            
+        # Показываем текущий кадр
+        self.current_photo = self.animation_frames[frame_index]
+        self.image_label.configure(image=self.animation_frames[frame_index])
+        
+        # Определяем следующий кадр
+        next_frame = (frame_index + 1) % len(self.animation_frames)
+        
+        # Получаем длительность текущего кадра (по умолчанию 100мс)
+        try:
+            duration = self.current_image.info.get('duration', 100)
+        except:
+            duration = 100
+        
+        # Планируем показ следующего кадра
+        self.animation_timer = self.root.after(duration, lambda: self.animate_gif(next_frame))
+    
+    def scale_image(self, image):
+        """Масштабирует изображение под размер окна"""
+        # Получаем размеры окна и изображения
+        window_width = self.image_frame.winfo_width()
+        window_height = self.image_frame.winfo_height()
+        image_width, image_height = image.size
+        
+        if window_width <= 1 or window_height <= 1:
+            return image
+            
+        # Вычисляем новые размеры с сохранением пропорций
+        scale_width = window_width / image_width
+        scale_height = window_height / image_height
+        scale = min(scale_width, scale_height)
+        
+        new_width = int(image_width * scale)
+        new_height = int(image_height * scale)
+        
+        # Масштабируем изображение
+        if new_width != image_width or new_height != image_height:
+            return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        return image
     
     def show_next_image(self):
         self.show_image(self.current_index + 1)
@@ -438,17 +633,39 @@ class ImageSorter:
         """Перемещает текущее изображение в выбранную папку"""
         if not self.current_image or folder_index >= len(self.folders):
             return
-        
+            
         try:
+            # Проверяем, что текущий файл не изменился
+            if self.current_file != self.image_files[self.current_index]:
+                return
+                
+            # Блокируем все кнопки папок
+            for btn in self.folder_buttons.values():
+                btn.configure(state='disabled')
+            
             # Создаем папку, если её нет
             folder_name = self.folders[folder_index]
             folder_path = os.path.join(self.app_path, folder_name)
             if not os.path.exists(folder_path):
                 os.makedirs(folder_path)
             
-            # Перемещаем файл
             src = self.image_files[self.current_index]
+            
+            # Проверяем, существует ли исходный файл
+            if not os.path.exists(src):
+                raise FileNotFoundError("Исходный файл не найден")
+                
             dst = os.path.join(folder_path, os.path.basename(src))
+            
+            # Проверяем существование файла
+            if os.path.exists(dst):
+                base, ext = os.path.splitext(dst)
+                counter = 1
+                while os.path.exists(f"{base}_{counter}{ext}"):
+                    counter += 1
+                dst = f"{base}_{counter}{ext}"
+            
+            # Перемещаем файл
             shutil.move(src, dst)
             
             # Удаляем файл из списка и показываем следующий
@@ -459,6 +676,7 @@ class ImageSorter:
                 self.show_image(self.current_index)
             else:
                 self.current_image = None
+                self.current_file = None
                 self.image_label.configure(image='')
                 self.status_var.set("Все изображения обработаны")
             
@@ -468,6 +686,9 @@ class ImageSorter:
             
         except Exception as e:
             messagebox.showerror("Ошибка", f"Не удалось переместить файл: {str(e)}")
+            # Разблокируем кнопки в случае ошибки
+            for btn in self.folder_buttons.values():
+                btn.configure(state='normal')
     
     def format_file_size(self, bytes):
         """Форматирует размер файла в читаемый вид"""
