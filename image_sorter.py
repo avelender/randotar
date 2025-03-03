@@ -537,30 +537,46 @@ class ImageSorter:
             # Проверяем, является ли изображение анимированным GIF
             is_animated = False
             try:
-                is_animated = 'duration' in self.current_image.info and self.current_image.info['duration'] > 0
-            except:
-                pass
+                # Более надежный способ определения анимированного GIF
+                if self.current_image.format == 'GIF':
+                    # Пробуем перейти ко второму кадру - если это возможно, значит GIF анимированный
+                    self.current_image.seek(1)
+                    is_animated = True
+                    # Возвращаемся к первому кадру
+                    self.current_image.seek(0)
+            except (EOFError, AttributeError):
+                # Если возникла ошибка EOFError, значит в GIF только один кадр
+                is_animated = False
                 
             if is_animated:
                 # Загружаем все кадры анимации
                 try:
+                    frame_count = 0
+                    durations = []
+                    
                     while True:
+                        # Сохраняем длительность текущего кадра
+                        duration = self.current_image.info.get('duration', 100)
+                        durations.append(duration)
+                        
                         # Копируем текущий кадр
                         frame = self.current_image.copy()
                         # Масштабируем кадр
                         scaled_frame = self.scale_image(frame)
                         # Конвертируем в PhotoImage
                         photo = ImageTk.PhotoImage(scaled_frame)
-                        self.animation_frames.append(photo)
+                        self.animation_frames.append((photo, duration))
+                        
                         # Переходим к следующему кадру
-                        self.current_image.seek(self.current_image.tell() + 1)
+                        frame_count += 1
+                        self.current_image.seek(frame_count)
                 except EOFError:
                     pass  # Достигнут конец файла (все кадры загружены)
                 
                 # Показываем первый кадр
                 if self.animation_frames:
-                    self.current_photo = self.animation_frames[0]
-                    self.image_label.configure(image=self.animation_frames[0])
+                    self.current_photo = self.animation_frames[0][0]
+                    self.image_label.configure(image=self.animation_frames[0][0])
                     # Запускаем анимацию
                     self.animate_gif(0)
             else:
@@ -585,17 +601,16 @@ class ImageSorter:
             return
             
         # Показываем текущий кадр
-        self.current_photo = self.animation_frames[frame_index]
-        self.image_label.configure(image=self.animation_frames[frame_index])
+        frame, duration = self.animation_frames[frame_index]
+        self.current_photo = frame
+        self.image_label.configure(image=frame)
         
         # Определяем следующий кадр
         next_frame = (frame_index + 1) % len(self.animation_frames)
         
-        # Получаем длительность текущего кадра (по умолчанию 100мс)
-        try:
-            duration = self.current_image.info.get('duration', 100)
-        except:
-            duration = 100
+        # Используем сохраненную длительность для текущего кадра
+        # Минимальная длительность - 20 мс, чтобы избежать слишком быстрой анимации
+        duration = max(duration, 20)
         
         # Планируем показ следующего кадра
         self.animation_timer = self.root.after(duration, lambda: self.animate_gif(next_frame))
