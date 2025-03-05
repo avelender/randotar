@@ -7,6 +7,7 @@ from tkinter import ttk, messagebox, simpledialog
 from PIL import Image, ImageTk
 import threading
 import time
+import subprocess  # Добавляем импорт для запуска проводника
 
 class ToolTip(object):
     def __init__(self, widget, text):
@@ -194,6 +195,15 @@ class ImageSorter:
         self.filename_var = tk.StringVar()
         filename_label = ttk.Label(info_frame, textvariable=self.filename_var, wraplength=250)  # Ограничиваем ширину текста
         filename_label.pack(anchor=tk.W, pady=(0, 5), fill=tk.X)
+        
+        # Кнопка "Открыть в проводнике"
+        self.explorer_btn = ttk.Button(
+            info_frame,
+            text="Открыть в проводнике [Ctrl+E]",
+            command=self.open_in_explorer,
+            state='disabled'  # Изначально кнопка неактивна
+        )
+        self.explorer_btn.pack(fill=tk.X, pady=(0, 5))
         
         # Счетчик обработанных
         self.images_count_var = tk.StringVar(value="Обработано: 0")
@@ -499,6 +509,9 @@ class ImageSorter:
         self.root.bind("<Left>", lambda event: self.show_prev_image())
         self.root.bind("<space>", lambda event: self.show_next_image())  # Пропуск изображения
         
+        # Открыть в проводнике - Ctrl+E (Explorer)
+        self.root.bind("<Control-e>", lambda event: self.open_in_explorer())
+        
         # Горячие клавиши для папок
         # Сначала удаляем все старые привязки цифр
         for i in range(10):
@@ -664,6 +677,9 @@ class ImageSorter:
             filesize = os.path.getsize(self.image_files[index])
             self.filename_var.set(f"Файл: {filename}\nРазмер: {self.format_file_size(filesize)}")
             
+            # Активируем кнопку "Открыть в проводнике"
+            self.explorer_btn.configure(state='normal')
+            
             # Разблокируем все кнопки папок
             for btn in self.folder_buttons.values():
                 btn.configure(state='normal')
@@ -783,12 +799,24 @@ class ImageSorter:
     
     def format_file_size(self, bytes):
         """Форматирует размер файла в читаемый вид"""
-        if bytes < 1024:
-            return f"{bytes} байт"
-        elif bytes < 1048576:
-            return f"{bytes/1024:.1f} КБ"
-        else:
-            return f"{bytes/1048576:.1f} МБ"
+        for unit in ['Б', 'КБ', 'МБ', 'ГБ', 'ТБ']:
+            if bytes < 1024.0:
+                return f"{bytes:.1f} {unit}"
+            bytes /= 1024.0
+        return f"{bytes:.1f} ПБ"
+    
+    def open_in_explorer(self):
+        """Открывает текущий файл в проводнике Windows"""
+        if not self.current_file or not os.path.exists(self.current_file):
+            messagebox.showinfo("Информация", "Нет текущего файла для отображения")
+            return
+        
+        try:
+            # Используем explorer для открытия папки и выделения файла
+            subprocess.run(['explorer', '/select,', os.path.normpath(self.current_file)])
+            self.status_var.set(f"Файл открыт в проводнике: {os.path.basename(self.current_file)}")
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось открыть файл в проводнике: {str(e)}")
     
     def on_window_map(self, event):
         """Обработчик изменения состояния окна (максимизация/восстановление)"""
