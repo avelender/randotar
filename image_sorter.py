@@ -200,7 +200,7 @@ class ImageSorter:
         # Кнопка "Открыть в проводнике"
         self.explorer_btn = ttk.Button(
             info_frame,
-            text="Open in Explorer [Ctrl+E]",
+            text="Open in Explorer",
             command=self.open_in_explorer,
             state='disabled'  # Изначально кнопка неактивна
         )
@@ -512,9 +512,6 @@ class ImageSorter:
         self.root.bind("<Right>", lambda event: self.show_next_image())
         self.root.bind("<Left>", lambda event: self.show_prev_image())
         self.root.bind("<space>", lambda event: self.show_next_image())  # Пропуск изображения
-        
-        # Открыть в проводнике - Ctrl+E (Explorer)
-        self.root.bind("<Control-e>", lambda event: self.open_in_explorer())
         
         # Горячие клавиши для папок
         # Сначала удаляем все старые привязки цифр
