@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>City</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            background: linear-gradient(to top, #ff7e5f, #feb47b, #ffcc94, #87ceeb);
+            overflow: hidden;
+        }
+        
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .block {
+            position: absolute;
+            bottom: 0;
+            background-color: #808080; /* ПОЛНОСТЬЮ НЕПРОЗРАЧНЫЙ СЕРЫЙ ЦВЕТ */
+            border-radius: 5px 5px 0 0;
+            transform: translateY(100%); /* Начальное положение - полностью за пределами экрана */
+            opacity: 1;
+            transition-property: transform, opacity;
+            transition-timing-function: ease-out;
+            will-change: transform, opacity; /* Оптимизация производительности анимации */
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="container"></div>
+
+    <script>
+        const container = document.getElementById("container");
+        
+        function getRandomNumber(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+        
+        function createBlock() {
+            // Новые размеры блоков: ширина 50-250, высота 100-700
+            const width = getRandomNumber(50, 250);
+            const height = getRandomNumber(100, 700);
+            const left = getRandomNumber(0, window.innerWidth - width);
+            
+            // Рандомное время исчезновения (30-45 секунд)
+            const disappearTime = getRandomNumber(30000, 45000);
+            
+            // Время поднятия блока (2-4 секунды)
+            const riseTime = getRandomNumber(2000, 4000);
+            
+            // Рандомное время задержки перед исчезновением (10-20 секунд)
+            const visibleTime = getRandomNumber(10000, 20000);
+            
+            const block = document.createElement("div");
+            block.className = "block";
+            block.style.width = `${width}px`;
+            block.style.height = `${height}px`;
+            block.style.left = `${left}px`;
+            
+            // Устанавливаем время анимации для поднятия и исчезновения
+            block.style.transitionDuration = `${riseTime}ms, ${disappearTime}ms`;
+            
+            // Добавляем блок в DOM
+            container.appendChild(block);
+            
+            // Принудительно вызываем перерисовку, чтобы браузер применил начальные стили
+            block.offsetHeight; // Этот трюк заставляет браузер применить стили до изменения transform
+            
+            // Запускаем анимацию поднятия блока с небольшой задержкой
+            setTimeout(() => {
+                block.style.transform = "translateY(0)";
+                
+                // Ждем полного появления (время поднятия) + задержка 10-20 секунд
+                setTimeout(() => {
+                    // Начинаем исчезновение
+                    block.style.opacity = "0";
+                    
+                    // Удаляем блок после исчезновения
+                    setTimeout(() => {
+                        block.remove();
+                    }, disappearTime);
+                }, riseTime + visibleTime); // Время поднятия + время видимости (10-20 секунд)
+            }, 50); // Увеличиваем задержку до 50мс для более надежной работы
+        }
+        
+        function startBlockCreation() {
+            createBlock();
+            // Интервал между появлением блоков (1-3 секунды)
+            const nextBlockDelay = getRandomNumber(1000, 3000);
+            setTimeout(startBlockCreation, nextBlockDelay);
+        }
+        
+        // Запускаем создание блоков после полной загрузки страницы
+        window.addEventListener('load', startBlockCreation);
+    </script>
+</body>
+</html>
