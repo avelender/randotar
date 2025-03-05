@@ -260,7 +260,7 @@ class ImageSorter:
             # Кнопка редактирования
             edit_btn = ttk.Button(
                 frame,
-                text="✎",
+                text="R",  # Латинская буква R (Rename)
                 width=3,
                 command=lambda f=folder: self.rename_folder(f)
             )
@@ -270,7 +270,7 @@ class ImageSorter:
             # Кнопка удаления
             del_btn = ttk.Button(
                 frame,
-                text="✖",
+                text="X",  # Латинская буква X (Delete/Remove)
                 width=3,
                 command=lambda f=folder: self.delete_folder(f)
             )
