@@ -8,7 +8,7 @@
             margin: 0;
             padding: 0;
             height: 100vh;
-            background: linear-gradient(to top, #ff7e5f, #feb47b, #ffcc94, #87ceeb);
+            background: linear-gradient(to top, #ff7e5f, #feb47b, #ffcc94, #87ceeb, #1a237e);
             overflow: hidden;
         }
         
@@ -21,18 +21,64 @@
         .block {
             position: absolute;
             bottom: 0;
-            background-color: #808080; /* ПОЛНОСТЬЮ НЕПРОЗРАЧНЫЙ СЕРЫЙ ЦВЕТ */
-            border-radius: 5px 5px 0 0;
+            border-radius: 2px 2px 0 0;
             transform: translateY(100%); /* Начальное положение - полностью за пределами экрана */
             opacity: 1;
             transition-property: transform, opacity;
             transition-timing-function: ease-out;
             will-change: transform, opacity; /* Оптимизация производительности анимации */
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Окна в зданиях */
+        .window {
+            position: absolute;
+            background-color: rgba(255, 255, 200, 0.8);
+            width: 4px;
+            height: 6px;
+            box-shadow: 0 0 3px rgba(255, 255, 150, 0.8);
+        }
+        
+        /* Слои глубины */
+        .layer-1 {
+            background-color: #111111; /* Самый темный - передний план */
+            z-index: 30;
+        }
+        
+        .layer-2 {
+            background-color: #222222;
+            z-index: 20;
+        }
+        
+        .layer-3 {
+            background-color: #333333;
+            z-index: 10;
+        }
+        
+        .layer-4 {
+            background-color: #444444; /* Самый светлый - задний план */
+            z-index: 5;
+        }
+        
+        /* Солнце */
+        .sun {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, #ff9500, #ff5722);
+            border-radius: 50%;
+            box-shadow: 0 0 50px rgba(255, 87, 34, 0.8);
+            bottom: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
         }
     </style>
 </head>
 <body>
-    <div class="container" id="container"></div>
+    <div class="container" id="container">
+        <div class="sun"></div>
+    </div>
 
     <script>
         const container = document.getElementById("container");
@@ -41,10 +87,96 @@
             return Math.floor(Math.random() * (max - min + 1)) + min;
         }
         
+        // Функция для создания окон в зданиях
+        function createWindows(block, width, height, layer) {
+            // Определяем, сколько окон будет в здании в зависимости от его размера
+            const windowsPerRow = Math.floor(width / 10);
+            const windowsPerColumn = Math.floor(height / 15);
+            
+            // Вероятность того, что окно будет включено (зависит от слоя)
+            let lightProbability;
+            switch(layer) {
+                case 1: lightProbability = 0.7; break; // Передний план - больше огней
+                case 2: lightProbability = 0.5; break;
+                case 3: lightProbability = 0.3; break;
+                case 4: lightProbability = 0.2; break; // Задний план - меньше огней
+                default: lightProbability = 0.5;
+            }
+            
+            // Создаем окна
+            for (let row = 0; row < windowsPerColumn; row++) {
+                for (let col = 0; col < windowsPerRow; col++) {
+                    // Случайно определяем, будет ли окно включено
+                    if (Math.random() < lightProbability) {
+                        const window = document.createElement("div");
+                        window.className = "window";
+                        
+                        // Позиционируем окно внутри здания
+                        window.style.left = `${col * 10 + 5}px`;
+                        window.style.top = `${row * 15 + 10}px`;
+                        
+                        // Случайный оттенок света (от желтого до белого)
+                        const hue = getRandomNumber(40, 60);
+                        const lightness = getRandomNumber(80, 100);
+                        window.style.backgroundColor = `hsla(${hue}, 100%, ${lightness}%, 0.8)`;
+                        
+                        block.appendChild(window);
+                    }
+                }
+            }
+        }
+        
         function createBlock() {
-            // Новые размеры блоков: ширина 50-250, высота 100-700
-            const width = getRandomNumber(50, 250);
-            const height = getRandomNumber(100, 700);
+            // Определяем слой глубины (1-4)
+            const layer = getRandomNumber(1, 4);
+            
+            // Размеры зависят от слоя (дальние здания меньше)
+            let minWidth, maxWidth, minHeight, maxHeight;
+            
+            switch(layer) {
+                case 1: // Передний план - самые крупные здания
+                    minWidth = 60;  // Минимум 6 окон в ширину
+                    maxWidth = 200;
+                    minHeight = 200;
+                    maxHeight = 700;
+                    break;
+                case 2:
+                    minWidth = 60;  // Минимум 6 окон в ширину
+                    maxWidth = 160;
+                    minHeight = 150;
+                    maxHeight = 500;
+                    break;
+                case 3:
+                    minWidth = 60;  // Минимум 6 окон в ширину
+                    maxWidth = 120;
+                    minHeight = 100;
+                    maxHeight = 400;
+                    break;
+                case 4: // Задний план - самые мелкие здания
+                    minWidth = 60;  // Минимум 6 окон в ширину
+                    maxWidth = 80;
+                    minHeight = 80;
+                    maxHeight = 300;
+                    break;
+            }
+            
+            // Иногда создаем очень узкие высотки (небоскребы), но не менее 6 окон в ширину
+            if (Math.random() < 0.2) {
+                minWidth = 60;  // Минимум 6 окон в ширину
+                maxWidth = 70;  // Немного шире минимума
+                minHeight = Math.max(minHeight, 300); // Минимум 300px высотой
+            }
+            // Иногда создаем очень широкие и низкие здания (торговые центры, склады)
+            else if (Math.random() < 0.15) {
+                minWidth = Math.max(minWidth * 3, 100);
+                maxWidth = Math.max(maxWidth * 2, 300);
+                maxHeight = Math.min(maxHeight, 200); // Максимум 200px высотой
+            }
+            
+            const width = getRandomNumber(minWidth, maxWidth);
+            const height = getRandomNumber(minHeight, maxHeight);
+            
+            // Позиция зависит от слоя (дальние здания выше)
             const left = getRandomNumber(0, window.innerWidth - width);
             
             // Рандомное время исчезновения (30-45 секунд)
@@ -57,13 +189,16 @@
             const visibleTime = getRandomNumber(10000, 20000);
             
             const block = document.createElement("div");
-            block.className = "block";
+            block.className = `block layer-${layer}`;
             block.style.width = `${width}px`;
             block.style.height = `${height}px`;
             block.style.left = `${left}px`;
             
             // Устанавливаем время анимации для поднятия и исчезновения
             block.style.transitionDuration = `${riseTime}ms, ${disappearTime}ms`;
+            
+            // Добавляем окна в здания
+            createWindows(block, width, height, layer);
             
             // Добавляем блок в DOM
             container.appendChild(block);
