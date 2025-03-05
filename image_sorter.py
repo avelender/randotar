@@ -237,19 +237,23 @@ class ImageSorter:
             # Сохраняем кнопку в словарь
             self.folder_buttons[folder] = btn
             
-            # Добавляем метку с горячей клавишей
-            if folder in self.folder_hotkeys:
-                hotkey_label = ttk.Label(frame, text=f"[{self.folder_hotkeys[folder]}]", padding=(5, 0))
-                hotkey_label.pack(side=tk.LEFT)
-            
             # Кнопка выбора горячей клавиши
-            hotkey = self.folder_hotkeys.get(folder, str(i + 1))
-            hotkey_btn = ttk.Button(
-                frame,
-                text=f"[{hotkey}]",
-                width=4,
-                command=lambda f=folder: self.show_hotkey_menu(f)
-            )
+            if folder in self.folder_hotkeys:
+                hotkey = self.folder_hotkeys[folder]
+                hotkey_btn = ttk.Button(
+                    frame,
+                    text=f"[{hotkey}]",
+                    width=4,
+                    command=lambda f=folder: self.show_hotkey_menu(f)
+                )
+            else:
+                # Пустая кнопка, если нет горячей клавиши
+                hotkey_btn = ttk.Button(
+                    frame,
+                    text="[ ]",
+                    width=4,
+                    command=lambda f=folder: self.show_hotkey_menu(f)
+                )
             hotkey_btn.pack(side=tk.LEFT, padx=2)
             createToolTip(hotkey_btn, "Горячие цифры")
             
@@ -368,26 +372,28 @@ class ImageSorter:
         """Показывает меню выбора горячей клавиши"""
         menu = tk.Menu(self.root, tearoff=0)
         
-        # Добавляем пункты меню для каждой цифры
-        for i in range(1, 10):
+        # Добавляем пункты меню для каждой цифры (0-9)
+        for i in range(10):  # Изменено с range(1, 10) на range(10), чтобы включить 0
+            digit = str(i)
+            
             # Проверяем, не занята ли эта горячая клавиша другой папкой
             used_by = None
             for f, h in self.folder_hotkeys.items():
-                if h == str(i) and f != folder:
+                if h == digit and f != folder:
                     used_by = f
                     break
             
             if used_by:
-                # Если клавиша занята, показываем это в меню
+                # Если клавиша занята, позволяем её "отобрать"
                 menu.add_command(
-                    label=f"{i} (используется для '{used_by}')",
-                    state='disabled'
+                    label=f"{digit} ({used_by})",
+                    command=lambda num=digit, old_folder=used_by: self.reassign_hotkey(folder, num, old_folder)
                 )
             else:
                 # Если клавиша свободна, позволяем её выбрать
                 menu.add_command(
-                    label=str(i),
-                    command=lambda num=i: self.set_folder_hotkey(folder, str(num))
+                    label=digit,
+                    command=lambda num=digit: self.set_folder_hotkey(folder, num)
                 )
         
         # Показываем меню под кнопкой
@@ -395,6 +401,17 @@ class ImageSorter:
             self.root.winfo_pointerx(),
             self.root.winfo_pointery()
         )
+    
+    def reassign_hotkey(self, new_folder, hotkey, old_folder):
+        """Переназначает горячую клавишу с одной папки на другую"""
+        # Удаляем горячую клавишу у старой папки
+        if old_folder in self.folder_hotkeys:
+            del self.folder_hotkeys[old_folder]
+        
+        # Устанавливаем горячую клавишу для новой папки
+        self.folder_hotkeys[new_folder] = hotkey
+        self.create_folder_buttons()
+        self.bind_keys()
     
     def set_folder_hotkey(self, folder, hotkey):
         """Устанавливает горячую клавишу для папки"""
@@ -484,13 +501,13 @@ class ImageSorter:
         
         # Горячие клавиши для папок
         # Сначала удаляем все старые привязки цифр
-        for i in range(1, 10):
+        for i in range(10):
             self.root.unbind(str(i))
         
         # Создаем словарь для быстрого поиска индекса папки по горячей клавише
         hotkey_to_index = {}
         for i, folder in enumerate(self.folders):
-            hotkey = self.folder_hotkeys.get(folder, str(i + 1))
+            hotkey = self.folder_hotkeys.get(folder, str(i))
             hotkey_to_index[hotkey] = i
         
         # Привязываем горячие клавиши
