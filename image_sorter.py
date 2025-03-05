@@ -8,6 +8,62 @@ from PIL import Image, ImageTk
 import threading
 import time
 
+class ToolTip(object):
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tipwindow = None
+        self.id = None
+        self.x = self.y = 0
+
+    def showtip(self, text):
+        "Display text in tooltip window"
+        self.text = text
+        if self.tipwindow or not self.text:
+            return
+        
+        # Получаем координаты курсора мыши вместо виджета
+        x = self.widget.winfo_pointerx()
+        y = self.widget.winfo_pointery()
+        
+        # Создаем всплывающее окно
+        self.tipwindow = tw = tk.Toplevel(self.widget)
+        tw.overrideredirect(True)
+        tw.wm_overrideredirect(True)
+        
+        # Создаем метку с текстом
+        label = tk.Label(tw, text=self.text, justify=tk.LEFT,
+                      background="#ffffe0", relief=tk.SOLID, borderwidth=1,
+                      font=("tahoma", "8", "normal"))
+        label.pack(ipadx=1)
+        
+        # Размещаем окно слева от курсора
+        tw.update_idletasks()  # Обновляем, чтобы получить размеры окна
+        width = tw.winfo_width()
+        
+        # Размещаем окно слева от курсора, но проверяем, чтобы не выйти за левый край экрана
+        if x - width - 10 > 0:
+            x = x - width - 10  # Смещаем влево от курсора
+        else:
+            x = 0  # Если выходит за левый край, прижимаем к левому краю
+            
+        tw.wm_geometry("+%d+%d" % (x, y))
+
+    def hidetip(self):
+        tw = self.tipwindow
+        self.tipwindow = None
+        if tw:
+            tw.destroy()
+
+def createToolTip(widget, text):
+    toolTip = ToolTip(widget, text)
+    def enter(event):
+        toolTip.showtip(text)
+    def leave(event):
+        toolTip.hidetip()
+    widget.bind('<Enter>', enter)
+    widget.bind('<Leave>', leave)
+
 class ImageSorter:
     def __init__(self, root):
         self.root = root
@@ -195,6 +251,7 @@ class ImageSorter:
                 command=lambda f=folder: self.show_hotkey_menu(f)
             )
             hotkey_btn.pack(side=tk.LEFT, padx=2)
+            createToolTip(hotkey_btn, "Горячие цифры")
             
             # Кнопка редактирования
             edit_btn = ttk.Button(
@@ -204,6 +261,7 @@ class ImageSorter:
                 command=lambda f=folder: self.rename_folder(f)
             )
             edit_btn.pack(side=tk.LEFT, padx=2)
+            createToolTip(edit_btn, "Переименовать папку")
             
             # Кнопка удаления
             del_btn = ttk.Button(
@@ -213,6 +271,7 @@ class ImageSorter:
                 command=lambda f=folder: self.delete_folder(f)
             )
             del_btn.pack(side=tk.LEFT)
+            createToolTip(del_btn, "Удалить папку")
     
     def handle_folder_click(self, event, folder_index):
         """Обработчик клика по кнопке папки"""
