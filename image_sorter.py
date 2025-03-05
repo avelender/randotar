@@ -70,6 +70,7 @@ class ImageSorter:
         self.root = root
         self.root.title("Image Sorter")
         self.root.geometry("1200x800")  # Фиксированный начальный размер окна
+        self.root.minsize(800, 600)
         
         # Инициализируем переменные
         self.current_image = None
@@ -163,7 +164,7 @@ class ImageSorter:
         
         skip_btn = ttk.Button(
             skip_frame,
-            text="Пропустить",
+            text="Skip",
             command=self.show_next_image
         )
         skip_btn.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -184,11 +185,11 @@ class ImageSorter:
         self.create_folder_buttons()
         
         # Кнопка добавления новой папки
-        add_btn = ttk.Button(sidebar, text="+ Добавить папку", command=self.add_folder)
+        add_btn = ttk.Button(sidebar, text="+ Add Folder", command=self.add_folder)
         add_btn.pack(fill=tk.X, pady=(10, 0))
         
         # Информация
-        info_frame = ttk.LabelFrame(sidebar, text="Информация", padding=(5, 5))
+        info_frame = ttk.LabelFrame(sidebar, text="Information", padding=(5, 5))
         info_frame.pack(fill=tk.X, pady=10)
         
         # Текущий файл
@@ -199,18 +200,18 @@ class ImageSorter:
         # Кнопка "Открыть в проводнике"
         self.explorer_btn = ttk.Button(
             info_frame,
-            text="Открыть в проводнике [Ctrl+E]",
+            text="Open in Explorer [Ctrl+E]",
             command=self.open_in_explorer,
             state='disabled'  # Изначально кнопка неактивна
         )
         self.explorer_btn.pack(fill=tk.X, pady=(0, 5))
         
         # Счетчик обработанных
-        self.images_count_var = tk.StringVar(value="Обработано: 0")
+        self.images_count_var = tk.StringVar(value="Processed: 0")
         ttk.Label(info_frame, textvariable=self.images_count_var).pack(anchor=tk.W)
         
         # Статус
-        self.status_var = tk.StringVar(value="Загрузка изображений...")
+        self.status_var = tk.StringVar(value="Loading images...")
         ttk.Label(sidebar, textvariable=self.status_var).pack(anchor=tk.W, pady=10)
         
         # Контейнер для изображения
@@ -265,7 +266,7 @@ class ImageSorter:
                     command=lambda f=folder: self.show_hotkey_menu(f)
                 )
             hotkey_btn.pack(side=tk.LEFT, padx=2)
-            createToolTip(hotkey_btn, "Горячие цифры")
+            createToolTip(hotkey_btn, "Hotkeys")
             
             # Кнопка редактирования
             edit_btn = ttk.Button(
@@ -275,7 +276,7 @@ class ImageSorter:
                 command=lambda f=folder: self.rename_folder(f)
             )
             edit_btn.pack(side=tk.LEFT, padx=2)
-            createToolTip(edit_btn, "Переименовать папку")
+            createToolTip(edit_btn, "Rename folder")
             
             # Кнопка удаления
             del_btn = ttk.Button(
@@ -285,7 +286,7 @@ class ImageSorter:
                 command=lambda f=folder: self.delete_folder(f)
             )
             del_btn.pack(side=tk.LEFT)
-            createToolTip(del_btn, "Удалить папку")
+            createToolTip(del_btn, "Delete folder")
     
     def handle_folder_click(self, event, folder_index):
         """Обработчик клика по кнопке папки"""
@@ -363,11 +364,14 @@ class ImageSorter:
                     self.current_image = None
                     self.current_file = None
                     self.image_label.configure(image='')
-                    self.status_var.set("Все изображения обработаны")
+                    self.status_var.set("All images processed")
                 
                 # Увеличиваем счетчик обработанных изображений
                 self.processed_images += 1
                 self.update_counter()
+                
+                # Обновляем статус с информацией о последнем действии
+                self.status_var.set(f"Moved to: {folder_name}")
             else:
                 # Если не удалось переместить, просто пропускаем файл
                 self.show_next_image()
@@ -431,10 +435,10 @@ class ImageSorter:
     
     def add_folder(self):
         """Добавляет новую папку"""
-        name = simpledialog.askstring("Новая папка", "Введите название папки:")
+        name = simpledialog.askstring("New Folder", "Enter folder name:")
         if name:
             if name in self.folders:
-                messagebox.showerror("Ошибка", "Папка с таким названием уже существует")
+                messagebox.showerror("Error", "Folder with this name already exists")
                 return
             
             try:
@@ -448,18 +452,18 @@ class ImageSorter:
                 
                 # Обновляем интерфейс
                 self.create_folder_buttons()
-                self.status_var.set(f"Добавлена папка: {name}")
+                self.status_var.set(f"Folder added: {name}")
             except Exception as e:
-                messagebox.showerror("Ошибка", f"Не удалось создать папку: {str(e)}")
+                messagebox.showerror("Error", f"Failed to create folder: {str(e)}")
     
     def rename_folder(self, old_name):
         """Переименовывает существующую папку"""
-        new_name = simpledialog.askstring("Переименовать папку", 
-                                        "Введите новое название папки:", 
+        new_name = simpledialog.askstring("Rename Folder", 
+                                        "Enter new folder name:", 
                                         initialvalue=old_name)
         if new_name and new_name != old_name:
             if new_name in self.folders:
-                messagebox.showerror("Ошибка", "Папка с таким названием уже существует")
+                messagebox.showerror("Error", "Folder with this name already exists")
                 return
             
             try:
@@ -475,19 +479,19 @@ class ImageSorter:
                 
                 # Обновляем интерфейс
                 self.create_folder_buttons()
-                self.status_var.set(f"Папка переименована: {old_name} → {new_name}")
+                self.status_var.set(f"Folder renamed: {old_name} → {new_name}")
             except Exception as e:
-                messagebox.showerror("Ошибка", f"Не удалось переименовать папку: {str(e)}")
+                messagebox.showerror("Error", f"Failed to rename folder: {str(e)}")
     
     def delete_folder(self, folder_name):
         """Удаляет папку"""
         if len(self.folders) <= 1:
-            messagebox.showerror("Ошибка", "Нельзя удалить последнюю папку")
+            messagebox.showerror("Error", "Cannot delete the last folder")
             return
         
-        if messagebox.askyesno("Подтверждение", 
-                              f"Удалить папку '{folder_name}'?\n\n" +
-                              "Внимание: все файлы в папке также будут удалены!"):
+        if messagebox.askyesno("Confirmation", 
+                              f"Delete folder '{folder_name}'?\n\n" +
+                              "Warning: all files in the folder will also be deleted!"):
             try:
                 # Удаляем папку
                 folder_path = os.path.join(self.app_path, folder_name)
@@ -498,9 +502,9 @@ class ImageSorter:
                 
                 # Обновляем интерфейс
                 self.create_folder_buttons()
-                self.status_var.set(f"Папка удалена: {folder_name}")
+                self.status_var.set(f"Folder deleted: {folder_name}")
             except Exception as e:
-                messagebox.showerror("Ошибка", f"Не удалось удалить папку: {str(e)}")
+                messagebox.showerror("Error", f"Failed to delete folder: {str(e)}")
     
     def bind_keys(self):
         """Привязка горячих клавиш"""
@@ -546,16 +550,16 @@ class ImageSorter:
                 self.update_counter()
                 # Показываем первое изображение
                 self.show_image(0)
-                self.status_var.set("Готово")
+                self.status_var.set("Ready to work")
             else:
-                self.status_var.set("Изображения не найдены в текущей папке")
+                self.status_var.set("No images found in the current folder")
                 
         except Exception as e:
-            self.status_var.set(f"Ошибка при сканировании: {str(e)}")
+            self.status_var.set(f"Error scanning: {str(e)}")
     
     def update_counter(self):
         """Обновляет счетчик обработанных изображений"""
-        self.images_count_var.set(f"Обработано: {self.processed_images}/{self.total_images}")
+        self.images_count_var.set(f"Processed: {self.processed_images}/{self.total_images}")
     
     def on_window_resize(self, event):
         """Обработчик изменения размера окна"""
@@ -675,7 +679,7 @@ class ImageSorter:
             # Обновляем информацию о файле
             filename = os.path.basename(self.image_files[index])
             filesize = os.path.getsize(self.image_files[index])
-            self.filename_var.set(f"Файл: {filename}\nРазмер: {self.format_file_size(filesize)}")
+            self.filename_var.set(f"File: {filename}\nSize: {self.format_file_size(filesize)}")
             
             # Активируем кнопку "Открыть в проводнике"
             self.explorer_btn.configure(state='normal')
@@ -685,7 +689,7 @@ class ImageSorter:
                 btn.configure(state='normal')
             
         except Exception as e:
-            self.status_var.set(f"Ошибка при загрузке изображения: {str(e)}")
+            self.status_var.set(f"Error loading image: {str(e)}")
     
     def animate_gif(self, frame_index):
         """Показывает следующий кадр анимированного GIF"""
@@ -732,6 +736,7 @@ class ImageSorter:
     
     def show_next_image(self):
         self.show_image(self.current_index + 1)
+        self.status_var.set("Skipped")
     
     def show_prev_image(self):
         self.show_image(self.current_index - 1)
@@ -760,7 +765,7 @@ class ImageSorter:
             
             # Проверяем, существует ли исходный файл
             if not os.path.exists(src):
-                raise FileNotFoundError("Исходный файл не найден")
+                raise FileNotFoundError("Source file not found")
                 
             dst = os.path.join(folder_path, os.path.basename(src))
             
@@ -775,6 +780,9 @@ class ImageSorter:
             # Перемещаем файл
             shutil.move(src, dst)
             
+            # Обновляем статус с информацией о последнем действии
+            self.status_var.set(f"Moved to: {folder_name}")
+            
             # Удаляем файл из списка и показываем следующий
             self.image_files.pop(self.current_index)
             if self.image_files:
@@ -785,38 +793,37 @@ class ImageSorter:
                 self.current_image = None
                 self.current_file = None
                 self.image_label.configure(image='')
-                self.status_var.set("Все изображения обработаны")
+                self.status_var.set("All images processed")
             
             # Увеличиваем счетчик обработанных изображений
             self.processed_images += 1
             self.update_counter()
             
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Не удалось переместить файл: {str(e)}")
+            messagebox.showerror("Error", f"Failed to move file: {str(e)}")
             # Разблокируем кнопки в случае ошибки
             for btn in self.folder_buttons.values():
                 btn.configure(state='normal')
     
     def format_file_size(self, bytes):
         """Форматирует размер файла в читаемый вид"""
-        for unit in ['Б', 'КБ', 'МБ', 'ГБ', 'ТБ']:
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
             if bytes < 1024.0:
                 return f"{bytes:.1f} {unit}"
             bytes /= 1024.0
-        return f"{bytes:.1f} ПБ"
+        return f"{bytes:.1f} PB"
     
     def open_in_explorer(self):
         """Открывает текущий файл в проводнике Windows"""
         if not self.current_file or not os.path.exists(self.current_file):
-            messagebox.showinfo("Информация", "Нет текущего файла для отображения")
+            messagebox.showinfo("Information", "No current file to display")
             return
         
         try:
             # Используем explorer для открытия папки и выделения файла
             subprocess.run(['explorer', '/select,', os.path.normpath(self.current_file)])
-            self.status_var.set(f"Файл открыт в проводнике: {os.path.basename(self.current_file)}")
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Не удалось открыть файл в проводнике: {str(e)}")
+            messagebox.showerror("Error", f"Failed to open file in explorer: {str(e)}")
     
     def on_window_map(self, event):
         """Обработчик изменения состояния окна (максимизация/восстановление)"""
